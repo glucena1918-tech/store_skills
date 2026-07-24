@@ -12,7 +12,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     // ── 2. Fetch repo metadata from GitHub API ───────────────
     const githubToken = Deno.env.get("GITHUB_TOKEN");
-    const githubHeaders = {
+    const githubHeaders: Record<string, string> = {
       Accept: "application/vnd.github.v3+json",
       "User-Agent": "StoreSkills/1.0",
     };
@@ -175,6 +175,9 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto
     // ── 7. Save to Supabase ──────────────────────────────────
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configuradas");
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const skillData = {
@@ -222,9 +225,10 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Error:", err);
+    const error = err as any;
+    console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: err.message || "Error interno del servidor" }),
+      JSON.stringify({ error: error.message || "Error interno del servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
