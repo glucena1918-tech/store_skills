@@ -31,6 +31,7 @@ export default function EvaluateForm({ onEvaluate, onToast }) {
         setResult(res)
         onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente.`, 'success')
       } else {
+        setResult(res)
         onToast(`Repositorio rechazado. No cumple los estándares del directorio.`, 'info')
       }
     } catch (err) {
