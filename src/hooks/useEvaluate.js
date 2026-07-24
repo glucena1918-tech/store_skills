@@ -1,0 +1,245 @@
+import { supabase } from '../lib/supabase'
+
+export function useEvaluate() {
+  // Helper: Envolver un fetch con timeout para evitar cuelgues
+  const fetchWithTimeout = (url, options = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal })
+      .finally(() => clearTimeout(timer));
+  }
+
+  const evaluate = async (url) => {
+    console.log('[Store Skills] Iniciando evaluación para:', url);
+    
+    try {
+      // 1. Intentar Edge Function con timeout de 8 segundos
+      const edgePromise = supabase.functions.invoke('evaluate-skill', {
+        body: { url },
+      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Edge Function timeout')), 8000)
+      );
+      
+      const { data, error } = await Promise.race([edgePromise, timeoutPromise]);
+
+      if (!error && data) {
+        console.log('[Store Skills] Evaluación exitosa mediante Edge Function.');
+        return data;
+      }
+      
+      console.warn('[Store Skills] Edge Function no disponible. Ejecutando evaluación directa...');
+    } catch (e) {
+      console.warn('[Store Skills] Edge Function inaccesible. Ejecutando evaluación directa...', e.message);
+    }
+
+    // 2. Evaluación directa desde el Frontend (GitHub API + Gemini API)
+    return await evaluateLocally(url);
+  }
+
+  const evaluateLocally = async (url) => {
+    // ── Validar formato de URL ────────────────────────────
+    const match = url.match(/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/);
+    if (!match) {
+      throw new Error('URL inválida. Solo se aceptan repositorios de GitHub.');
+    }
+
+    const [, owner, repo] = match;
+    const repoName = repo.replace(/\.git$/, '');
+
+    // ── 1. Fetch metadata de GitHub API (timeout 10s) ────
+    console.log(`[Store Skills] Consultando GitHub API para ${owner}/${repoName}...`);
+    let repoRes;
+    try {
+      repoRes = await fetchWithTimeout(
+        `https://api.github.com/repos/${owner}/${repoName}`,
+        {},
+        10000
+      );
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('GitHub API no respondió a tiempo. Intenta de nuevo más tarde.');
+      }
+      throw new Error(`No se pudo conectar con GitHub: ${err.message}`);
+    }
+    
+    if (!repoRes.ok) {
+      if (repoRes.status === 404) {
+        return {
+          approved: false,
+          reason: 'Repositorio no encontrado. Puede ser privado o haber sido eliminado.',
+        };
+      }
+      if (repoRes.status === 403) {
+        throw new Error('Límite de peticiones de GitHub excedido (60/hora). Espera unos minutos e intenta de nuevo.');
+      }
+      throw new Error(`Error al consultar GitHub (HTTP ${repoRes.status}). Intenta de nuevo.`);
+    }
+    
+    const repoData = await repoRes.json();
+    console.log(`[Store Skills] GitHub respondió: ${repoData.stargazers_count} estrellas`);
+
+    const stars = repoData.stargazers_count;
+    const forks = repoData.forks_count;
+    const language = repoData.language || 'Desconocido';
+    const updatedAt = repoData.updated_at
+      ? new Date(repoData.updated_at).toLocaleDateString('es-ES')
+      : 'Desconocido';
+
+    // ── 2. Validar estrellas mínimas (neutral, basado en datos reales) ──
+    if (stars < 10001) {
+      return {
+        approved: false,
+        reason: `Rechazado: ${stars.toLocaleString('es-ES')} estrellas (mínimo requerido: 10,001)`,
+      };
+    }
+
+    // ── 3. Descargar README (timeout 8s, no bloquea si falla) ────
+    let readmeContent = '';
+    try {
+      const readmeRes = await fetchWithTimeout(
+        `https://api.github.com/repos/${owner}/${repoName}/readme`,
+        { headers: { Accept: 'application/vnd.github.raw' } },
+        8000
+      );
+      if (readmeRes.ok) {
+        readmeContent = await readmeRes.text();
+        readmeContent = readmeContent.substring(0, 3000);
+      }
+    } catch {
+      readmeContent = '(README no disponible)';
+    }
+
+    // ── 4. Consultar Gemini API (timeout 20s) ──────────────
+    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new Error('La clave VITE_GEMINI_API_KEY no está configurada en el archivo .env');
+    }
+
+    console.log('[Store Skills] Consultando a Gemini IA...');
+
+    const prompt = `Eres un curador senior y evangelista técnico de herramientas para desarrolladores.
+Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
+
+DATOS DEL REPOSITORIO:
+- Nombre: ${repoName}
+- Owner: ${owner}
+- Stars: ${stars.toLocaleString()}
+- Forks: ${forks.toLocaleString()}
+- Lenguaje: ${language}
+- Última actualización: ${updatedAt}
+- README (primeros 3000 caracteres):
+${readmeContent}
+
+INSTRUCCIONES DE RESPUESTA:
+Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto extra):
+{
+  "name": "Nombre claro y reconocible de la herramienta",
+  "description": "Explicación detallada, clara y profunda en español sobre qué es exactamente esta herramienta, qué problema resuelve en el desarrollo moderno y sus características o ventajas principales (150 a 250 palabras).",
+  "use_case": "Escenario específico de cuándo usarla, para quién es ideal y qué alternativa o problema ahorra (50 a 100 palabras).",
+  "example_usage": "Ejemplo práctico de código (o comandos explicados) listo para copiar y entender cómo se implementa de forma real en un proyecto.",
+  "category": "una de: Frontend | Backend | DevOps | Data Science | Testing | Database | Security | AI/ML | API & Integration | Mobile | CLI Tools",
+  "install_command": "comando principal de instalación (npm install X, pip install X, etc.)",
+  "rating": 5,
+  "approved": true,
+  "reason": ""
+}`;
+
+    let response;
+    try {
+      response = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        },
+        20000
+      );
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Gemini IA no respondió a tiempo. Intenta de nuevo más tarde.');
+      }
+      throw new Error(`No se pudo conectar con Gemini IA: ${err.message}`);
+    }
+
+    if (!response.ok) {
+      const status = response.status;
+      if (status === 429) {
+        throw new Error('Cuota de Gemini API agotada. Espera unos minutos e intenta de nuevo.');
+      }
+      if (status === 400) {
+        throw new Error('Solicitud inválida a Gemini API. Verifica la clave API en .env');
+      }
+      throw new Error(`Error al consultar Gemini IA (HTTP ${status}). Intenta de nuevo.`);
+    }
+
+    const resData = await response.json();
+    const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('[Store Skills] Gemini respondió correctamente.');
+    
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Gemini no devolvió un JSON válido. Intenta de nuevo.');
+    }
+    
+    let evaluation;
+    try {
+      evaluation = JSON.parse(jsonMatch[0]);
+    } catch {
+      throw new Error('Error al interpretar la respuesta de Gemini. Intenta de nuevo.');
+    }
+
+    // ── 5. Validar rating asignado por la IA ─────────────
+    const rating = Number(evaluation.rating) || 0;
+    if (rating < 3) {
+      return {
+        approved: false,
+        reason: `Rechazado por la IA: Rating ${rating}/5 (mínimo requerido: 3/5). ${evaluation.reason || ''}`,
+      };
+    }
+
+    // ── 6. Guardar en Supabase ───────────────────────────
+    const skillData = {
+      name: evaluation.name || repoName,
+      description: evaluation.description || '',
+      use_case: evaluation.use_case || '',
+      example_usage: evaluation.example_usage || '',
+      category: evaluation.category || 'Otros',
+      install_command: evaluation.install_command || '',
+      language: language,
+      stars: stars,
+      rating: rating,
+      original_url: `https://github.com/${owner}/${repoName}`,
+      repo_owner: owner,
+      repo_name: repoName,
+      last_updated: updatedAt,
+      approved: true,
+      reason: null,
+    };
+
+    const { data: savedSkill, error: saveError } = await supabase
+      .from('skills')
+      .upsert(skillData, { onConflict: 'original_url' })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.warn('[Store Skills] No se pudo guardar en Supabase, devolviendo datos locales:', saveError.message);
+      return {
+        approved: true,
+        skill: { ...skillData, id: `loc-${Date.now()}` },
+      };
+    }
+
+    console.log('[Store Skills] Skill guardada exitosamente:', savedSkill.name);
+    return {
+      approved: true,
+      skill: savedSkill,
+    };
+  }
+
+  return { evaluate }
+}

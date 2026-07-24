@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* ============================================================
+   STORE SKILLS — PREMIUM APPLE DESIGN SYSTEM
+   Inspirado en la Skill de UI "Impeccable" + Apple Design Guideline
+   ============================================================ */
+
+/* --- Custom Variables --- */
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Palette: Sleek, high-contrast, premium light mode with rich accents */
+  --color-bg-primary: #f5f5f7;       /* Apple light gray background */
+  --color-bg-card: #ffffff;
+  --color-text-primary: #1d1d1f;     /* Apple deep charcoal */
+  --color-text-secondary: #6e6e73;   /* Muted gray */
+  --color-text-tertiary: #86868b;    /* Light gray for metadata */
+  
+  --color-accent: #0071e3;           /* Apple Royal Blue */
+  --color-accent-gradient: linear-gradient(135deg, #0071e3 0%, #3636f0 100%);
+  --color-accent-soft: rgba(0, 113, 227, 0.08);
+  --color-success: #34c759;          /* Apple green */
+  --color-warning: #ff9f0a;          /* Apple orange */
+  --color-error: #ff3b30;            /* Apple red */
+  --color-star: #ffd60a;             /* Apple gold */
+  
+  --color-border: rgba(0, 0, 0, 0.06);
+  --color-border-glow: rgba(0, 113, 227, 0.15);
+  
+  /* Glassmorphism settings */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-blur: blur(20px) saturate(190%);
+  
+  /* Shadows: layered and soft */
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 20px 40px rgba(0, 113, 227, 0.07);
+  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.15);
+}
+
+/* --- Base Rules --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Subtle background mesh gradient for organic feel */
+.bg-mesh-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #f5f5f7;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(0, 113, 227, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(110, 91, 255, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(52, 199, 89, 0.02) 0%, transparent 50%);
+}
+
+/* Network nodes agentic background — Pexels technology image */
+.bg-network-nodes {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/pexels-bg.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.40;
+}
+
+/* --- Apple-like Typography Scale with Optical Sizing --- */
+h1 {
+  font-size: clamp(2.5rem, 6vw, 4.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em; /* Negative tracking for display sizes */
+  color: var(--color-text-primary);
+}
+
+h2 {
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+
+h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* --- Custom Glassmorphism --- */
+.apple-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+/* --- WWDC Custom Transitions & Physical Spring Effects --- */
+/* Custom Spring-like transition: cubic-bezier(0.16, 1, 0.3, 1) provides rapid initial acceleration with gentle settle */
+.spring-transition {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spring-hover:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-border-glow);
+}
+
+.spring-hover:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+/* --- Core Keyframes --- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
