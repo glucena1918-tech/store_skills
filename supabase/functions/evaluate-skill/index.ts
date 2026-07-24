@@ -4,7 +4,6 @@
 // O: pegar directamente en el Dashboard de Supabase > Edge Functions
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +18,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { url } = await req.json();
+    const { url, bypassMinStars } = await req.json();
 
     if (!url) {
       return new Response(
@@ -80,11 +79,13 @@ Deno.serve(async (req: Request) => {
       : "Desconocido";
 
     // ── 3. Check minimum stars requirement ───────────────────
-    if (stars < 10001) {
+    if (stars < 10001 && !bypassMinStars) {
       return new Response(
         JSON.stringify({
           approved: false,
-          reason: `Rechazado: ${stars.toLocaleString("es-ES")} stars (mínimo requerido: 10,001)`,
+          reason: `Rechazado: ${stars.toLocaleString("es-ES")} estrellas (mínimo requerido: 10,001)`,
+          canBypass: true,
+          stars: stars
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -111,14 +112,11 @@ Deno.serve(async (req: Request) => {
       readmeContent = "(README no disponible)";
     }
 
-    // ── 5. Call Gemini API for evaluation ─────────────────────
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiApiKey) {
-      throw new Error("GEMINI_API_KEY no configurada");
+    // ── 5. Call Groq API for evaluation ─────────────────────
+    const groqApiKey = Deno.env.get("GROQ_API_KEY");
+    if (!groqApiKey) {
+      throw new Error("GROQ_API_KEY no configurada");
     }
-
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `Eres un curador senior y evangelista técnico de herramientas para desarrolladores.
 Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
@@ -134,7 +132,7 @@ DATOS DEL REPOSITORIO:
 ${readmeContent}
 
 INSTRUCCIONES DE RESPUESTA:
-Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto extra):
+Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
 {
   "name": "Nombre claro y reconocible de la herramienta",
   "description": "Explicación detallada, clara y profunda en español sobre qué es exactamente esta herramienta, qué problema resuelve en el desarrollo moderno y sus características o ventajas principales (150 a 250 palabras).",
@@ -147,8 +145,35 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto
   "reason": ""
 }`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!groqRes.ok) {
+      const status = groqRes.status;
+      if (status === 429) {
+        throw new Error("Límite de cuota de Groq API excedido. Espera unos minutos e intenta de nuevo.");
+      }
+      throw new Error(`Error de Groq API (HTTP ${status})`);
+    }
+
+    const groqData = await groqRes.json();
+    const responseText = groqData.choices?.[0]?.message?.content || "";
 
     // Parse JSON from response (handle potential markdown wrapping)
     let evaluation;

@@ -44,6 +44,33 @@ export default function EvaluateForm({ onEvaluate, onToast }) {
     }
   }
 
+  const handleBypass = async () => {
+    if (!url.trim() || loading) return
+
+    setLoading(true)
+    setResult(null)
+
+    try {
+      setLoadingStep('Buscando repositorio en GitHub (Omitiendo límite de estrellas)...')
+      const res = await onEvaluate(url.trim(), true)
+
+      if (res.approved) {
+        setResult(res)
+        onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente.`, 'success')
+      } else {
+        onToast(`Repositorio rechazado. No cumple los estándares del directorio.`, 'info')
+      }
+    } catch (err) {
+      setLoadingStep('')
+      const errorMsg = err.message || 'Error al evaluar el repositorio. Revisa tu conexión.';
+      console.error('[Store Skills] Error en evaluación forzada:', errorMsg);
+      setResult({ approved: false, reason: errorMsg })
+      onToast(errorMsg, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleClear = () => {
     setUrl('')
     setResult(null)
@@ -339,9 +366,37 @@ export default function EvaluateForm({ onEvaluate, onToast }) {
                       </div>
                     </div>
                   ) : (
-                    <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
-                      {result.reason || 'El repositorio analizado no cumple los criterios de calidad mínimos necesarios para ingresar en el directorio.'}
-                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                        {result.reason || 'El repositorio analizado no cumple los criterios de calidad mínimos necesarios para ingresar en el directorio.'}
+                      </p>
+                      {result.canBypass && (
+                        <div style={{ display: 'flex', marginTop: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={handleBypass}
+                            className="cursor-pointer transition-all duration-200 active:scale-[0.97]"
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '10px',
+                              background: 'rgba(255, 59, 48, 0.08)',
+                              color: 'var(--color-error)',
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              border: '1px solid rgba(255, 59, 48, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'}
+                          >
+                            <Sparkles style={{ width: '14px', height: '14px' }} />
+                            Forzar Evaluación Manual (Caso Excepcional)
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

@@ -51,8 +51,8 @@ export default function App() {
   }, [])
 
   // Handle skill evaluation
-  const handleEvaluate = useCallback(async (url) => {
-    const result = await evaluate(url)
+  const handleEvaluate = useCallback(async (url, bypassMinStars = false) => {
+    const result = await evaluate(url, bypassMinStars)
 
     // If approved, add to the grid immediately
     if (result.approved && result.skill) {

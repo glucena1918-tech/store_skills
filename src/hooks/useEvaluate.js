@@ -9,13 +9,13 @@ export function useEvaluate() {
       .finally(() => clearTimeout(timer));
   }
 
-  const evaluate = async (url) => {
-    console.log('[Store Skills] Iniciando evaluación para:', url);
+  const evaluate = async (url, bypassMinStars = false) => {
+    console.log('[Store Skills] Iniciando evaluación para:', url, 'bypassMinStars:', bypassMinStars);
     
     try {
       // 1. Intentar Edge Function con timeout de 8 segundos
       const edgePromise = supabase.functions.invoke('evaluate-skill', {
-        body: { url },
+        body: { url, bypassMinStars },
       });
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Edge Function timeout')), 8000)
@@ -34,10 +34,10 @@ export function useEvaluate() {
     }
 
     // 2. Evaluación directa desde el Frontend (GitHub API + Gemini API)
-    return await evaluateLocally(url);
+    return await evaluateLocally(url, bypassMinStars);
   }
 
-  const evaluateLocally = async (url) => {
+  const evaluateLocally = async (url, bypassMinStars = false) => {
     // ── Validar formato de URL ────────────────────────────
     const match = url.match(/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/);
     if (!match) {
@@ -87,10 +87,12 @@ export function useEvaluate() {
       : 'Desconocido';
 
     // ── 2. Validar estrellas mínimas (neutral, basado en datos reales) ──
-    if (stars < 10001) {
+    if (stars < 10001 && !bypassMinStars) {
       return {
         approved: false,
         reason: `Rechazado: ${stars.toLocaleString('es-ES')} estrellas (mínimo requerido: 10,001)`,
+        canBypass: true,
+        stars: stars
       };
     }
 
@@ -110,13 +112,13 @@ export function useEvaluate() {
       readmeContent = '(README no disponible)';
     }
 
-    // ── 4. Consultar Gemini API (timeout 20s) ──────────────
-    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      throw new Error('La clave VITE_GEMINI_API_KEY no está configurada en el archivo .env');
+    // ── 4. Consultar Groq API (timeout 20s) ──────────────
+    const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!groqApiKey) {
+      throw new Error('La clave VITE_GROQ_API_KEY no está configurada en el archivo .env');
     }
 
-    console.log('[Store Skills] Consultando a Gemini IA...');
+    console.log('[Store Skills] Consultando a Groq IA...');
 
     const prompt = `Eres un curador senior y evangelista técnico de herramientas para desarrolladores.
 Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
@@ -132,7 +134,7 @@ DATOS DEL REPOSITORIO:
 ${readmeContent}
 
 INSTRUCCIONES DE RESPUESTA:
-Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto extra):
+Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
 {
   "name": "Nombre claro y reconocible de la herramienta",
   "description": "Explicación detallada, clara y profunda en español sobre qué es exactamente esta herramienta, qué problema resuelve en el desarrollo moderno y sus características o ventajas principales (150 a 250 palabras).",
@@ -148,37 +150,48 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown ni texto
     let response;
     try {
       response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+        'https://api.groq.com/openai/v1/chat/completions',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqApiKey}`
+          },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.1,
+            response_format: { type: 'json_object' }
           }),
         },
         20000
       );
     } catch (err) {
       if (err.name === 'AbortError') {
-        throw new Error('Gemini IA no respondió a tiempo. Intenta de nuevo más tarde.');
+        throw new Error('Groq IA no respondió a tiempo. Intenta de nuevo más tarde.');
       }
-      throw new Error(`No se pudo conectar con Gemini IA: ${err.message}`);
+      throw new Error(`No se pudo conectar con Groq IA: ${err.message}`);
     }
 
     if (!response.ok) {
       const status = response.status;
       if (status === 429) {
-        throw new Error('Cuota de Gemini API agotada. Espera unos minutos e intenta de nuevo.');
+        throw new Error('Cuota de Groq API excedida. Espera unos minutos e intenta de nuevo.');
       }
-      if (status === 400) {
-        throw new Error('Solicitud inválida a Gemini API. Verifica la clave API en .env');
+      if (status === 400 || status === 401) {
+        throw new Error('Solicitud inválida o clave no autorizada a Groq API. Verifica la clave API en .env');
       }
-      throw new Error(`Error al consultar Gemini IA (HTTP ${status}). Intenta de nuevo.`);
+      throw new Error(`Error al consultar Groq IA (HTTP ${status}). Intenta de nuevo.`);
     }
 
     const resData = await response.json();
-    const responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('[Store Skills] Gemini respondió correctamente.');
+    const responseText = resData.choices?.[0]?.message?.content || '';
+    console.log('[Store Skills] Groq respondió correctamente.');
     
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
