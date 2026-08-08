@@ -87,7 +87,7 @@ export default function Hero({ searchQuery, onSearchChange, skills = [] }) {
         </p>
 
         {/* Stats Ribbon Ajustado */}
-        <div className="flex flex-wrap justify-center items-center gap-3 mt-4 mb-6">
+        <div className="flex flex-wrap justify-center items-center gap-3 mt-4 mb-8 relative z-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/70 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
             ⚡ <b>{skills.length}</b> Skills Curadas
           </span>
@@ -100,7 +100,7 @@ export default function Hero({ searchQuery, onSearchChange, skills = [] }) {
         </div>
 
         {/* Premium macOS-style Search Bar */}
-        <div className="relative" style={{ maxWidth: '560px', margin: '0 auto', animation: 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both' }}>
+        <div className="relative" style={{ maxWidth: '560px', margin: '8px auto 0', animation: 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both' }}>
           <div className="absolute flex items-center pointer-events-none" style={{ top: 0, bottom: 0, left: '18px' }}>
             <Search style={{ width: '20px', height: '20px', color: 'var(--color-text-tertiary)' }} />
           </div>
@@ -115,7 +115,7 @@ export default function Hero({ searchQuery, onSearchChange, skills = [] }) {
               width: '100%',
               height: '56px',
               paddingLeft: '52px',
-              paddingRight: '64px',
+              paddingRight: '80px',
               borderRadius: '18px',
               background: '#ffffff',
               border: '1px solid var(--color-border)',
