@@ -118,8 +118,9 @@ Deno.serve(async (req: Request) => {
       throw new Error("GROQ_API_KEY no configurada");
     }
 
-    const prompt = `Eres un curador senior y evangelista técnico de herramientas para desarrolladores.
+    const prompt = `Eres un curador senior, evangelista técnico y auditor de seguridad de herramientas para desarrolladores.
 Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
+Además, realiza una AUDITORÍA DE SALUD Y SEGURIDAD del repositorio.
 
 DATOS DEL REPOSITORIO:
 - Nombre: ${repoName}
@@ -127,9 +128,16 @@ DATOS DEL REPOSITORIO:
 - Stars: ${stars.toLocaleString()}
 - Forks: ${forks.toLocaleString()}
 - Lenguaje: ${language}
+- Licencia detectada por GitHub: ${repoData.license?.spdx_id || "No detectada"}
 - Última actualización: ${updatedAt}
+- Fecha ISO última actualización: ${repoData.updated_at || "Desconocida"}
 - README (primeros 3000 caracteres):
 ${readmeContent}
+
+AUDITORÍA DE SEGURIDAD — INSTRUCCIONES:
+1. LICENCIA: Identifica la licencia de código abierto del proyecto (MIT, Apache-2.0, GPL-3.0, BSD, ISC, etc.). Si no se detecta, indica "No especificada".
+2. MANTENIMIENTO: Evalúa si el proyecto está "Activo" (actualizado en los últimos 6 meses), "Mantenimiento" (actualizado entre 6-18 meses) o "Inactivo" (más de 18 meses sin actualización).
+3. RIESGO DE INTEGRACIÓN: Evalúa el nivel de riesgo/complejidad al integrar esta herramienta como "Bajo" (plug & play, pocas dependencias), "Medio" (requiere configuración moderada) o "Alto" (setup complejo, muchas dependencias, breaking changes frecuentes).
 
 INSTRUCCIONES DE RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
@@ -140,6 +148,16 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
   "example_usage": "Ejemplo práctico de código (o comandos explicados) listo para copiar y entender cómo se implementa de forma real en un proyecto.",
   "category": "una de: Frontend | Backend | DevOps | Data Science | Testing | Database | Security | AI/ML | API & Integration | Mobile | CLI Tools",
   "install_command": "comando principal de instalación (npm install X, pip install X, etc.)",
+  "license": "Identificador SPDX de la licencia (ej: MIT, Apache-2.0, GPL-3.0) o 'No especificada'",
+  "maintenance_status": "Activo | Mantenimiento | Inactivo",
+  "risk_level": "Bajo | Medio | Alto",
+  "agent_prompt": "Instrucción de Sistema lista para copiar y pegar en un Agente de IA (Claude, ChatGPT, Gemini, Antigravity, etc.). Debe indicar: qué skill tiene habilitada el agente, cuándo debe usarla, qué patrones o APIs emplear, y un ejemplo mínimo de cómo responder. Escríbelo en español, en tono profesional e imperativo, de 2 a 4 oraciones.",
+  "agent_reasoning_trace": [
+    "Paso 1: Validación del repositorio (ej: 'Verificación de repositorio: X estrellas.')",
+    "Paso 2: Análisis del README y tecnología (ej: 'Análisis de README: Documentación completa con soporte TS.')",
+    "Paso 3: Categorización automática (ej: 'Clasificación automática: Categoría Backend.')",
+    "Paso 4: Dictamen final (ej: 'Dictamen: Aprobado sin observaciones.')"
+  ],
   "rating": 5,
   "approved": true,
   "reason": ""
@@ -212,6 +230,11 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       example_usage: evaluation.example_usage || "",
       category: evaluation.category || "Otros",
       install_command: evaluation.install_command || "",
+      license: evaluation.license || repoData.license?.spdx_id || "No especificada",
+      maintenance_status: evaluation.maintenance_status || "Activo",
+      risk_level: evaluation.risk_level || "Medio",
+      agent_prompt: evaluation.agent_prompt || "",
+      agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
       language: language,
       stars: stars,
       rating: rating,

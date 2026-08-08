@@ -33,7 +33,17 @@ export function ContadorInteractivo() {
     repo_owner: 'facebook',
     repo_name: 'react',
     last_updated: '23/07/2026',
-    approved: true
+    approved: true,
+    license: 'MIT',
+    maintenance_status: 'Activo',
+    risk_level: 'Bajo',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill React. Cuando el usuario solicite interfaces web interactivas, componentes reutilizables o aplicaciones SPA, utiliza React con hooks (useState, useEffect, useCallback) y componentes funcionales en JSX. Prioriza el patrón de composición y el manejo de estado local antes de sugerir librerías externas de estado global.',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 221.5k estrellas en GitHub superan ampliamente el mínimo de 10k.',
+      'Paso 2: Análisis de README: Estructura clara e interactiva enfocada en la creación de interfaces de usuario.',
+      'Paso 3: Clasificación automática: Categoría asignada como Frontend debido al enfoque del Virtual DOM.',
+      'Paso 4: Dictamen: Aprobado con calificación perfecta (5/5).'
+    ]
   },
   {
     id: 'demo-2',
@@ -58,7 +68,17 @@ export class UsuariosController {
     repo_owner: 'nestjs',
     repo_name: 'nest',
     last_updated: '22/07/2026',
-    approved: true
+    approved: true,
+    license: 'MIT',
+    maintenance_status: 'Activo',
+    risk_level: 'Medio',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill NestJS. Cuando el usuario solicite un backend modular en Node.js, utiliza los patrones DTO, controladores y servicios inyectables de NestJS en TypeScript. Estructura las respuestas con decoradores (@Controller, @Get, @Post) y aplica validación con class-validator.',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 67.3k estrellas cumplen el requisito mínimo del directorio.',
+      'Paso 2: Análisis de README: Soporte robusto de TypeScript y arquitectura inspirada en Angular.',
+      'Paso 3: Clasificación automática: Categoría asignada como Backend por sus controladores y módulos.',
+      'Paso 4: Dictamen: Aprobado con alta recomendación (5/5).'
+    ]
   },
   {
     id: 'demo-3',
@@ -84,7 +104,17 @@ print("Gradiente dy/dx en x=3:", x.grad.item())  # 2*(3) + 2 = 8.0`,
     repo_owner: 'pytorch',
     repo_name: 'pytorch',
     last_updated: '20/07/2026',
-    approved: true
+    approved: true,
+    license: 'BSD-3-Clause',
+    maintenance_status: 'Activo',
+    risk_level: 'Alto',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill PyTorch. Cuando el usuario requiera entrenar modelos de deep learning, redes neuronales o pipelines de visión/NLP, utiliza PyTorch con tensores, autograd y el patrón nn.Module. Incluye siempre el ciclo de entrenamiento (forward, loss, backward, optimizer.step).',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 78.2k estrellas confirman la gran popularidad del ecosistema.',
+      'Paso 2: Análisis de README: Cómputo de tensores y optimización dinámica de grafos computacionales.',
+      'Paso 3: Clasificación automática: Categoría asignada como AI/ML.',
+      'Paso 4: Dictamen: Aprobado como skill esencial de Machine Learning (5/5).'
+    ]
   },
   {
     id: 'demo-4',
@@ -108,7 +138,17 @@ print("Gradiente dy/dx en x=3:", x.grad.item())  # 2*(3) + 2 = 8.0`,
     repo_owner: 'tailwindlabs',
     repo_name: 'tailwindcss',
     last_updated: '21/07/2026',
-    approved: true
+    approved: true,
+    license: 'MIT',
+    maintenance_status: 'Activo',
+    risk_level: 'Bajo',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill Tailwind CSS. Cuando el usuario solicite estilos, diseño responsivo o componentes visuales, utiliza exclusivamente clases de utilidad de Tailwind CSS directamente en el markup. Evita escribir CSS personalizado salvo que Tailwind no cubra el caso específico.',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 83.5k estrellas superan el umbral establecido.',
+      'Paso 2: Análisis de README: Diseño responsivo mediante clases de utilidad atómicas.',
+      'Paso 3: Clasificación automática: Categoría asignada como Frontend.',
+      'Paso 4: Dictamen: Aprobado por simplificar la consistencia del diseño (5/5).'
+    ]
   },
   {
     id: 'demo-5',
@@ -134,7 +174,17 @@ const { data: skills, error } = await supabase
     repo_owner: 'supabase',
     repo_name: 'supabase',
     last_updated: '23/07/2026',
-    approved: true
+    approved: true,
+    license: 'Apache-2.0',
+    maintenance_status: 'Activo',
+    risk_level: 'Bajo',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill Supabase. Cuando el usuario necesite base de datos, autenticación o almacenamiento, utiliza el cliente @supabase/supabase-js. Construye queries con .from().select().eq() y aplica Row Level Security (RLS) para proteger los datos. Usa suscripciones en tiempo real cuando se requiera reactividad.',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 72.1k estrellas validan a la alternativa open source de Firebase.',
+      'Paso 2: Análisis de README: Postgres en la nube, autenticación e inyección en tiempo real.',
+      'Paso 3: Clasificación automática: Categoría asignada como Database.',
+      'Paso 4: Dictamen: Aprobado por simplificar la arquitectura cliente-servidor (5/5).'
+    ]
   },
   {
     id: 'demo-6',
@@ -162,7 +212,17 @@ async def crear_skill(skill: SkillItem):
     repo_owner: 'fastapi',
     repo_name: 'fastapi',
     last_updated: '19/07/2026',
-    approved: true
+    approved: true,
+    license: 'MIT',
+    maintenance_status: 'Activo',
+    risk_level: 'Bajo',
+    agent_prompt: 'Instrucción del Sistema: Tienes habilitada la skill FastAPI. Cuando el usuario necesite crear APIs REST en Python, utiliza FastAPI con type hints, modelos Pydantic para validación automática y decoradores de ruta (@app.get, @app.post). Implementa endpoints asíncronos con async/await para máximo rendimiento.',
+    agent_reasoning_trace: [
+      'Paso 1: Verificación de repositorio: 71.4k estrellas validan su rápida adopción.',
+      'Paso 2: Análisis de README: API rápida mediante Type Hints y Pydantic en Python.',
+      'Paso 3: Clasificación automática: Categoría asignada como Backend.',
+      'Paso 4: Dictamen: Aprobado por velocidad de respuesta y documentación integrada (5/5).'
+    ]
   }
 ];
 
@@ -233,18 +293,22 @@ export function useSkills() {
   }, [skills, searchQuery, activeCategory])
 
   const addSkill = (newSkill) => {
-    // Avoid duplicates in general list
+    // Avoid duplicates in general list, update if already exists
     setSkills((prev) => {
       const exists = prev.some((s) => s.original_url === newSkill.original_url);
-      if (exists) return prev;
+      if (exists) {
+        return prev.map((s) => s.original_url === newSkill.original_url ? newSkill : s);
+      }
       return [newSkill, ...prev];
     });
 
-    // Add to recentlyAdded session state at the top
+    // Add or update in recentlyAdded session state
     setRecentlyAdded((prev) => {
       const exists = prev.some((s) => s.original_url === newSkill.original_url);
-      if (exists) return prev;
-      return [newSkill, ...prev].slice(0, 4); // Guardar máximo 4 en recientes
+      if (exists) {
+        return prev.map((s) => s.original_url === newSkill.original_url ? newSkill : s);
+      }
+      return [newSkill, ...prev].slice(0, 4);
     });
   }
 

@@ -1,4 +1,4 @@
-import { Star as StarIcon, Copy, Check, Trash2 } from 'lucide-react'
+import { Star as StarIcon, Copy, Check, Trash2, Shield, Activity } from 'lucide-react'
 import { useState } from 'react'
 import StarRating from './StarRating'
 
@@ -141,7 +141,7 @@ export default function SkillCard({ skill, onClick, onDelete, style }) {
         borderTop: '1px solid var(--color-border)',
         marginTop: 'auto',
       }}>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" style={{ flexWrap: 'wrap' }}>
           {skill.language && (
             <span style={{
               fontSize: '12px',
@@ -152,6 +152,38 @@ export default function SkillCard({ skill, onClick, onDelete, style }) {
               borderRadius: '6px',
             }}>
               {skill.language}
+            </span>
+          )}
+          {skill.license && skill.license !== 'No especificada' && (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 550,
+              color: 'var(--color-accent)',
+              background: 'var(--color-accent-soft)',
+              padding: '3px 7px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}>
+              <Shield style={{ width: '11px', height: '11px' }} />
+              {skill.license}
+            </span>
+          )}
+          {skill.maintenance_status && (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 550,
+              color: skill.maintenance_status === 'Activo' ? 'var(--color-success)' : skill.maintenance_status === 'Mantenimiento' ? 'var(--color-warning)' : 'var(--color-error)',
+              background: skill.maintenance_status === 'Activo' ? 'rgba(52, 199, 89, 0.1)' : skill.maintenance_status === 'Mantenimiento' ? 'rgba(255, 159, 10, 0.1)' : 'rgba(255, 59, 48, 0.1)',
+              padding: '3px 7px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}>
+              <Activity style={{ width: '11px', height: '11px' }} />
+              {skill.maintenance_status}
             </span>
           )}
         </div>

@@ -127,6 +127,11 @@ RESPONDE CON ESTE JSON:
 | original_url | TEXT | URL del repositorio original |
 | approved | BOOLEAN | true = aprobada, false = rechazada |
 | reason | TEXT | Motivo de rechazo (si aplica) |
+| license | TEXT | Licencia (MIT, Apache-2.0, etc.) |
+| maintenance_status | TEXT | Estado del mantenimiento (Activo/Mantenimiento/Inactivo) |
+| risk_level | TEXT | Nivel de riesgo (Bajo/Medio/Alto) |
+| agent_prompt | TEXT | Prompt de integración para agente de IA |
+| agent_reasoning_trace | TEXT[] | Traza de razonamiento/dictamen de evaluación |
 | created_at | TIMESTAMP | Fecha de evaluación |
 
 ### Configuración RLS (Row Level Security)
@@ -343,11 +348,11 @@ Buscar repos con:
 - [x] Definición del proyecto
 - [x] Stack tecnológico definido
 - [x] Diseño Apple-style aprobado
-- [ ] Backend: GitHub API + Gemini + Supabase
-- [ ] Frontend: Landing + Filtros + Cards + Modal
-- [ ] 15-20 skills evaluadas y funcionando
-- [ ] 4-5 casos de rechazo documentados
-- [ ] Deploy en Vercel
+- [x] Backend: GitHub API + Gemini/Groq + Supabase (Híbrido Edge Function + Fallback local)
+- [x] Frontend: Landing + Filtros + Cards + Modal (Actualizado con Auditoría, Prompt e Historial)
+- [x] 15-20 skills evaluadas y funcionando
+- [x] 4-5 casos de rechazo documentados
+- [/] Deploy en Vercel (Pendiente configurar variables de entorno para producción)
 - [ ] Video demostración
 
 ### V1 - Post Entrega (Monitoreo)

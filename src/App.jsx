@@ -236,6 +236,8 @@ export default function App() {
           skill={selectedSkill}
           onClose={() => setSelectedSkill(null)}
           onDelete={onRequestDeleteSkill}
+          onReevaluate={handleEvaluate}
+          onUpdate={setSelectedSkill}
         />
       )}
 

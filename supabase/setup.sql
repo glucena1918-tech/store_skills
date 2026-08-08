@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS skills (
   last_updated TEXT,
   approved BOOLEAN DEFAULT false,
   reason TEXT,
+  license TEXT DEFAULT 'No especificada',
+  maintenance_status TEXT DEFAULT 'Activo',
+  risk_level TEXT DEFAULT 'Medio',
+  agent_prompt TEXT,
+  agent_reasoning_trace TEXT[],
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
