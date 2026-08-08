@@ -102,7 +102,7 @@ export default function App() {
       <Navbar onEvaluateClick={scrollToEvaluate} onExploreClick={handleExploreClick} />
 
       {/* Hero Section */}
-      <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} skills={skills} />
 
       {/* Main Content */}
       <main id="directorio" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>

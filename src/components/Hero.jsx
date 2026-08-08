@@ -1,7 +1,7 @@
 import { Search, Compass } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
-export default function Hero({ searchQuery, onSearchChange }) {
+export default function Hero({ searchQuery, onSearchChange, skills = [] }) {
   const searchInputRef = useRef(null)
   const [kbdText, setKbdText] = useState('Ctrl K')
 
@@ -86,15 +86,15 @@ export default function Hero({ searchQuery, onSearchChange }) {
           Un directorio premium de Skills para Agentes IA. Encuentra la documentación en español, copia los comandos e instálalos al instante.
         </p>
 
-        {/* Stats Ribbon */}
-        <div className="flex flex-wrap justify-center items-center gap-3 mb-8">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/60 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
-            ⚡ <b>+20</b> Skills Curadas
+        {/* Stats Ribbon Ajustado */}
+        <div className="flex flex-wrap justify-center items-center gap-3 mt-4 mb-6">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/70 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
+            ⚡ <b>{skills.length}</b> Skills Curadas
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/60 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/70 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
             🛡️ <b>100%</b> Auditadas con IA
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/60 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/70 backdrop-blur-md border border-gray-200/80 text-gray-700 shadow-sm">
             🇪🇸 <b>100%</b> en Español
           </span>
         </div>

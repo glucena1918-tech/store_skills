@@ -16,8 +16,69 @@ export default function EvaluationAlertCard({ skill, onApproveException }) {
       setLoading(false)
     }
   }
-
   if (!skill) return null
+
+  if (skill.risk_level === 'Alto') {
+    return (
+      <div
+        id={`diagnostic-card-security-threat`}
+        className="spring-transition"
+        style={{
+          borderRadius: '24px',
+          border: '1.5px solid #ff3b30',
+          background: 'linear-gradient(135deg, #fff5f5 0%, #ffebeb 100%)',
+          boxShadow: '0 20px 48px rgba(255, 59, 48, 0.12), 0 4px 12px rgba(0, 0, 0, 0.02)',
+          padding: '28px',
+          textAlign: 'left',
+          animation: 'fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
+          marginTop: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ff3b30', fontWeight: 800, fontSize: '16px', marginBottom: '12px' }}>
+          <ShieldAlert style={{ width: '24px', height: '24px' }} />
+          <span>🚨 AMENAZA DE SEGURIDAD DETECTADA</span>
+        </div>
+        
+        <p style={{ fontSize: '14px', color: '#8e1f1f', lineHeight: '1.6', margin: '0 0 16px 0', fontWeight: 500 }}>
+          El Agente de IA ha analizado el repositorio y ha detectado patrones de código de <b>Riesgo Alto</b>, dependencias vulnerables o falta de transparencia en la seguridad.
+        </p>
+
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.8)',
+          border: '1px solid rgba(255, 59, 48, 0.2)',
+          padding: '14px',
+          borderRadius: '12px',
+          fontSize: '12.5px',
+          color: '#c93b3b',
+          fontWeight: 650,
+          marginBottom: '20px',
+        }}>
+          🔒 <b>Política de Seguridad:</b> Este repositorio ha sido RECHAZADO Y BLOQUEADO de forma definitiva para proteger la plataforma y a los usuarios.
+        </div>
+
+        <button 
+          disabled 
+          style={{
+            width: '100%',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'var(--color-bg-tertiary)',
+            color: 'var(--color-text-tertiary)',
+            fontSize: '13px',
+            fontWeight: 700,
+            border: '1px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'not-allowed',
+          }}
+        >
+          🛑 Aprobación Manual Bloqueada por Riesgo de Seguridad
+        </button>
+      </div>
+    )
+  }
 
   // Clean values
   const pros = skill.pros || []

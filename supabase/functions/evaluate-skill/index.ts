@@ -250,12 +250,12 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       repo_owner: owner,
       repo_name: repoName,
       last_updated: updatedAt,
-      approved: stars >= 10001 || bypassMinStars,
+      approved: (stars >= 10001 && evaluation.risk_level !== "Alto") || bypassMinStars,
       reason: null,
     };
 
-    // ── 8. Return requires_human_review if stars are below threshold ─────────
-    if (stars < 10001 && !bypassMinStars) {
+    // ── 8. Return requires_human_review if stars are below threshold or risk is high ──
+    if ((stars < 10001 || evaluation.risk_level === "Alto") && !bypassMinStars) {
       return new Response(
         JSON.stringify({
           approved: false,

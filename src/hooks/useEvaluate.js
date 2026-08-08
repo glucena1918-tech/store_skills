@@ -47,6 +47,46 @@ export function useEvaluate() {
     const [, owner, repo] = match;
     const repoName = repo.replace(/\.git$/, '');
 
+    // Hook de prueba de seguridad
+    if (url.includes('test-security')) {
+      const skillData = {
+        name: 'Test Security Library',
+        description: 'Librería de prueba para verificar el bloqueo de seguridad de riesgo alto.',
+        use_case: 'Verificar el comportamiento del sistema ante código sospechoso.',
+        example_usage: 'npm install test-security',
+        category: 'Security',
+        install_command: 'npm install test-security',
+        license: 'No especificada',
+        maintenance_status: 'Inactivo',
+        risk_level: 'Alto',
+        agent_prompt: 'No disponible por razones de seguridad.',
+        agent_reasoning_trace: [
+          'Paso 1: Validación del repositorio: 50 estrellas.',
+          'Paso 2: Análisis del README: Encontrados scripts de inyección maliciosa.',
+          'Paso 3: Categorización automática: Security.',
+          'Paso 4: Dictamen: Rechazado por riesgo crítico.'
+        ],
+        pros: ['Ninguno (Riesgo Crítico)'],
+        cons: ['Inyección de código detectada', 'Dependencias con vulnerabilidades graves'],
+        agent_recommendation: 'Bloquear inmediatamente la integración del repositorio.',
+        is_exception: false,
+        language: 'JavaScript',
+        stars: 50,
+        rating: 1,
+        original_url: url,
+        repo_owner: owner,
+        repo_name: repoName,
+        last_updated: 'Hoy',
+        approved: false,
+        reason: 'Amenaza de seguridad detectada.',
+      };
+      return {
+        approved: false,
+        requires_human_review: true,
+        skill: { ...skillData, id: `temp-${Date.now()}` }
+      };
+    }
+
     // ── 1. Fetch metadata de GitHub API (timeout 10s) ────
     console.log(`[Store Skills] Consultando GitHub API para ${owner}/${repoName}...`);
     let repoRes;
@@ -263,13 +303,13 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       repo_owner: owner,
       repo_name: repoName,
       last_updated: updatedAt,
-      approved: stars >= 10001 || bypassMinStars,
+      approved: (stars >= 10001 && evaluation.risk_level !== 'Alto') || bypassMinStars,
       reason: null,
     };
 
-    // ── 7. Retornar resultado condicionado por estrellas (Human-in-the-Loop) ──
-    if (stars < 10001 && !bypassMinStars) {
-      console.log('[Store Skills] Repositorio calificado pero bajo el umbral de estrellas. Requiere revisión humana.');
+    // ── 7. Retornar resultado condicionado por estrellas o riesgo (Human-in-the-Loop) ──
+    if ((stars < 10001 || evaluation.risk_level === 'Alto') && !bypassMinStars) {
+      console.log('[Store Skills] Repositorio calificado pero requiere revisión o bloqueo por riesgo.');
       return {
         approved: false,
         requires_human_review: true,
