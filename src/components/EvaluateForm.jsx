@@ -11,6 +11,8 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
   const [inputHovered, setInputHovered] = useState(false)
   const [panelHovered, setPanelHovered] = useState(false)
 
+  const isException = result?.isException || result?.skill?.is_exception;
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!url.trim() || loading) return
@@ -344,14 +346,24 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
                         marginBottom: '8px',
                         letterSpacing: '-0.02em',
                       }}>
-                        {result.approved ? '¡Herramienta Aprobada por IA! 🎉' : 'Requisitos Insuficientes'}
+                        {result.approved 
+                          ? (isException ? '🛡️ ¡Herramienta Aprobada por Excepción Humana!' : '¡Herramienta Aprobada por IA! 🎉') 
+                          : 'Requisitos Insuficientes'}
                       </h3>
 
                       {result.approved && result.skill ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
-                            ¡Felicidades! La herramienta ha superado el filtro mínimo de 10,001 estrellas y el análisis de calidad de Gemini. 
-                            Ha sido guardada e incorporada instantáneamente a la sección de **Recién Agregadas**.
+                            {isException ? (
+                              <>
+                                La herramienta ha sido autorizada manualmente mediante intervención humana (<b>Human-in-the-Loop</b>) e incorporada instantáneamente a la sección de <b>Recién Agregadas</b>.
+                              </>
+                            ) : (
+                              <>
+                                ¡Felicidades! La herramienta ha superado el filtro mínimo de 10,001 estrellas y el análisis de calidad de la IA. 
+                                Ha sido guardada e incorporada a la sección de <b>Recién Agregadas</b>.
+                              </>
+                            )}
                           </p>
                           
                           {/* Sub-card of the added skill */}

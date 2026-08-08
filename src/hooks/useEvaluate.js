@@ -134,6 +134,11 @@ AUDITORÍA DE SEGURIDAD — INSTRUCCIONES:
 2. MANTENIMIENTO: Evalúa si el proyecto está "Activo" (actualizado en los últimos 6 meses), "Mantenimiento" (actualizado entre 6-18 meses) o "Inactivo" (más de 18 meses sin actualización).
 3. RIESGO DE INTEGRACIÓN: Evalúa el nivel de riesgo/complejidad al integrar esta herramienta como "Bajo" (plug & play, pocas dependencias), "Medio" (requiere configuración moderada) o "Alto" (setup complejo, muchas dependencias, breaking changes frecuentes).
 
+REGLAS OBLIGATORIAS DE COHERENCIA EN EVALUACIÓN:
+1. Los elementos incluidos en el array "pros" y en el array "cons" deben ser estrictamente MUTUAMENTE EXCLUYENTES y no pueden contradecirse entre sí.
+2. Si evalúas que el repositorio tiene "comunidad activa" o "mantenimiento regular" en los Pros, queda ESTRICTAMENTE PROHIBIDO mencionar "poca actividad", "mantenimiento deficiente" o "poca comunidad" en los Contras.
+3. Sé preciso, objetivo y coherente en la evaluación de la actividad, comunidad y soporte técnico del repositorio.
+
 INSTRUCCIONES DE RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
 {
