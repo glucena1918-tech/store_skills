@@ -149,7 +149,7 @@ Se aplicaron principios rigurosos de diseño limpio, moderno e interactivo:
 
 ## 📁 Esquema de Base de Datos (PostgreSQL en Supabase)
 
-La tabla de almacenamiento en Supabase está optimizada y cuenta con las siguientes propiedades:
+La tabla de almacenamiento en Supabase está optimizada y cuenta con las siguientes propiedades actualizadas:
 
 ```sql
 CREATE TABLE skills (
@@ -174,6 +174,10 @@ CREATE TABLE skills (
   risk_level TEXT DEFAULT 'Medio',
   agent_prompt TEXT,
   agent_reasoning_trace TEXT[],
+  pros TEXT[],
+  cons TEXT[],
+  agent_recommendation TEXT,
+  is_exception BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -182,7 +186,23 @@ ALTER TABLE skills ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Skills aprobadas son públicas" ON skills 
   FOR SELECT USING (approved = true);
+
+CREATE POLICY "Permitir inserciones desde Edge Function" ON skills 
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Permitir actualizaciones desde Edge Function" ON skills 
+  FOR UPDATE USING (true) WITH CHECK (true);
 ```
+
+---
+
+## 🔌 Activación, Conectividad y Carga de Datos Reales (Supabase Activo)
+
+La base de datos remota de Supabase ha sido completamente conectada, configurada y activada:
+1. **Esquema de Base de Datos y Políticas RLS:** Creadas con éxito en el panel web mediante SQL Editor.
+2. **Conexión Directa:** Vinculada de forma segura usando la clave `SUPABASE_SERVICE_ROLE_KEY` real y decodificada en el archivo `.env`.
+3. **Carga de Datos Reales (Seeding):** Las 6 habilidades de demostración (React, NestJS, PyTorch, Tailwind CSS, Supabase y FastAPI) han sido insertadas como registros reales y permanentes en la base de datos de producción.
+4. **Verificación de Producción:** El frontend en Vercel y local consultan la base de datos remota en tiempo real y renderizan la grilla desde Supabase sin depender de fallbacks locales.
 
 ---
 
