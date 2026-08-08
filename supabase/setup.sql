@@ -26,6 +26,10 @@ CREATE TABLE IF NOT EXISTS skills (
   risk_level TEXT DEFAULT 'Medio',
   agent_prompt TEXT,
   agent_reasoning_trace TEXT[],
+  pros TEXT[],
+  cons TEXT[],
+  agent_recommendation TEXT,
+  is_exception BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

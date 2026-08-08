@@ -78,18 +78,8 @@ Deno.serve(async (req: Request) => {
       ? new Date(repoData.updated_at).toLocaleDateString("es-ES")
       : "Desconocido";
 
-    // ── 3. Check minimum stars requirement ───────────────────
-    if (stars < 10001 && !bypassMinStars) {
-      return new Response(
-        JSON.stringify({
-          approved: false,
-          reason: `Rechazado: ${stars.toLocaleString("es-ES")} estrellas (mínimo requerido: 10,001)`,
-          canBypass: true,
-          stars: stars
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // ── 3. Check minimum stars requirement (Removed early return for holistic evaluation) ──
+    // We will evaluate the repository first and let the user review it in case stars < 10,001.
 
     // ── 4. Fetch README ──────────────────────────────────────
     let readmeContent = "";
@@ -158,6 +148,15 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
     "Paso 3: Categorización automática (ej: 'Clasificación automática: Categoría Backend.')",
     "Paso 4: Dictamen final (ej: 'Dictamen: Aprobado sin observaciones.')"
   ],
+  "pros": [
+    "Punto fuerte 1 (ej: soporte para TypeScript, buena documentación, etc.)",
+    "Punto fuerte 2..."
+  ],
+  "cons": [
+    "Punto a considerar 1 (ej: estrellas por debajo del umbral normal de 10k, poca actividad, etc.)",
+    "Punto a considerar 2..."
+  ],
+  "agent_recommendation": "Recomendación o dictamen cualitativo y detallado redactado por ti sobre si se aconseja integrar la herramienta en proyectos y, si procede, la sugerencia de aprobación manual por excepción (de 2 a 4 oraciones).",
   "rating": 5,
   "approved": true,
   "reason": ""
@@ -235,6 +234,10 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       risk_level: evaluation.risk_level || "Medio",
       agent_prompt: evaluation.agent_prompt || "",
       agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
+      pros: evaluation.pros || [],
+      cons: evaluation.cons || [],
+      agent_recommendation: evaluation.agent_recommendation || "",
+      is_exception: bypassMinStars,
       language: language,
       stars: stars,
       rating: rating,
@@ -242,9 +245,21 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       repo_owner: owner,
       repo_name: repoName,
       last_updated: updatedAt,
-      approved: true,
+      approved: stars >= 10001 || bypassMinStars,
       reason: null,
     };
+
+    // ── 8. Return requires_human_review if stars are below threshold ─────────
+    if (stars < 10001 && !bypassMinStars) {
+      return new Response(
+        JSON.stringify({
+          approved: false,
+          requires_human_review: true,
+          skill: { ...skillData, id: `temp-${Date.now()}` },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { data: savedSkill, error: saveError } = await supabase
       .from("skills")
@@ -254,7 +269,6 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
 
     if (saveError) {
       console.error("Error saving skill:", saveError);
-      // Still return the evaluation even if save fails
       return new Response(
         JSON.stringify({
           approved: true,

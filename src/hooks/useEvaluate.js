@@ -86,15 +86,8 @@ export function useEvaluate() {
       ? new Date(repoData.updated_at).toLocaleDateString('es-ES')
       : 'Desconocido';
 
-    // ── 2. Validar estrellas mínimas (neutral, basado en datos reales) ──
-    if (stars < 10001 && !bypassMinStars) {
-      return {
-        approved: false,
-        reason: `Rechazado: ${stars.toLocaleString('es-ES')} estrellas (mínimo requerido: 10,001)`,
-        canBypass: true,
-        stars: stars
-      };
-    }
+    // ── 2. Validar estrellas mínimas (Removido el bloqueo temprano para evaluación holística) ──
+    // Se procesarán los pros y cons de todos los repositorios sin importar las estrellas.
 
     // ── 3. Descargar README (timeout 8s, no bloquea si falla) ────
     let readmeContent = '';
@@ -160,6 +153,15 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
     "Paso 3: Categorización automática (ej: 'Clasificación automática: Categoría Backend.')",
     "Paso 4: Dictamen final (ej: 'Dictamen: Aprobado sin observaciones.')"
   ],
+  "pros": [
+    "Punto fuerte 1 (ej: soporte para TypeScript, buena documentación, etc.)",
+    "Punto fuerte 2..."
+  ],
+  "cons": [
+    "Punto a considerar 1 (ej: estrellas por debajo del umbral normal de 10k, poca actividad, etc.)",
+    "Punto a considerar 2..."
+  ],
+  "agent_recommendation": "Recomendación o dictamen cualitativo y detallado redactado por ti sobre si se aconseja integrar la herramienta en proyectos y, si procede, la sugerencia de aprobación manual por excepción (de 2 a 4 oraciones).",
   "rating": 5,
   "approved": true,
   "reason": ""
@@ -245,6 +247,10 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       risk_level: evaluation.risk_level || 'Medio',
       agent_prompt: evaluation.agent_prompt || '',
       agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
+      pros: evaluation.pros || [],
+      cons: evaluation.cons || [],
+      agent_recommendation: evaluation.agent_recommendation || '',
+      is_exception: bypassMinStars,
       language: language,
       stars: stars,
       rating: rating,
@@ -252,9 +258,19 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       repo_owner: owner,
       repo_name: repoName,
       last_updated: updatedAt,
-      approved: true,
+      approved: stars >= 10001 || bypassMinStars,
       reason: null,
     };
+
+    // ── 7. Retornar resultado condicionado por estrellas (Human-in-the-Loop) ──
+    if (stars < 10001 && !bypassMinStars) {
+      console.log('[Store Skills] Repositorio calificado pero bajo el umbral de estrellas. Requiere revisión humana.');
+      return {
+        approved: false,
+        requires_human_review: true,
+        skill: { ...skillData, id: `temp-${Date.now()}` },
+      };
+    }
 
     const { data: savedSkill, error: saveError } = await supabase
       .from('skills')
@@ -277,5 +293,33 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
     };
   }
 
-  return { evaluate }
+  const saveException = async (skillData) => {
+    console.log('[Store Skills] Guardando excepción para:', skillData.name);
+    const dataToSave = {
+      ...skillData,
+      approved: true,
+      is_exception: true,
+    };
+    
+    // Quitar prefijos de ID temporales para que Postgres genere el UUID real
+    if (dataToSave.id && (dataToSave.id.startsWith('temp-') || dataToSave.id.startsWith('loc-'))) {
+      delete dataToSave.id;
+    }
+
+    const { data: savedSkill, error: saveError } = await supabase
+      .from('skills')
+      .upsert(dataToSave, { onConflict: 'original_url' })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('[Store Skills] Error al guardar excepción en Supabase:', saveError.message);
+      // Fallback local en memoria si falla la BD
+      return { ...dataToSave, id: `loc-exc-${Date.now()}` };
+    }
+
+    return savedSkill;
+  };
+
+  return { evaluate, saveException }
 }

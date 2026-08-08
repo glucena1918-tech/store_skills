@@ -26,7 +26,7 @@ export default function App() {
     deleteSkill,
   } = useSkills()
 
-  const { evaluate } = useEvaluate()
+  const { evaluate, saveException } = useEvaluate()
   const [selectedSkill, setSelectedSkill] = useState(null)
   const [skillPendingDelete, setSkillPendingDelete] = useState(null)
   const [toast, setToast] = useState(null)
@@ -61,6 +61,15 @@ export default function App() {
 
     return result
   }, [evaluate, addSkill])
+
+  // Handle human-in-the-loop manual approval exception
+  const handleApproveException = useCallback(async (skillData) => {
+    const saved = await saveException(skillData)
+    if (saved) {
+      addSkill(saved)
+    }
+    return saved
+  }, [saveException, addSkill])
 
   // Step 1: Open custom confirmation modal for deletion
   const onRequestDeleteSkill = useCallback((skillToDelete) => {
@@ -224,7 +233,11 @@ export default function App() {
 
       {/* Evaluate Section */}
       <div ref={evaluateRef} style={{ position: 'relative', zIndex: 1 }}>
-        <EvaluateForm onEvaluate={handleEvaluate} onToast={showToast} />
+        <EvaluateForm 
+          onEvaluate={handleEvaluate} 
+          onToast={showToast} 
+          onApproveException={handleApproveException} 
+        />
       </div>
 
       {/* Footer */}

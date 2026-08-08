@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Loader2, Sparkles, CheckCircle2, XCircle, Link as LinkIcon, AlertCircle, X, RotateCcw } from 'lucide-react'
 import StarRating from './StarRating'
+import EvaluationAlertCard from './EvaluationAlertCard'
 
-export default function EvaluateForm({ onEvaluate, onToast }) {
+export default function EvaluateForm({ onEvaluate, onToast, onApproveException }) {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState('')
@@ -293,114 +294,133 @@ export default function EvaluateForm({ onEvaluate, onToast }) {
 
           {/* Result Panel */}
           {result && (
-            <div
-              style={{
-                borderRadius: '20px',
-                border: result.approved ? '2px solid var(--color-success)' : '1px solid rgba(255, 59, 48, 0.2)',
-                background: result.approved ? 'rgba(52, 199, 89, 0.07)' : 'rgba(255, 59, 48, 0.03)',
-                padding: '28px',
-                textAlign: 'left',
-                boxShadow: result.approved ? '0 8px 24px rgba(52, 199, 89, 0.08)' : 'none',
-                animation: 'fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                <div style={{
-                  padding: '12px',
-                  borderRadius: '14px',
-                  background: result.approved ? 'var(--color-success)' : 'rgba(255, 59, 48, 0.08)',
-                  color: result.approved ? '#ffffff' : 'var(--color-error)',
-                  boxShadow: result.approved ? '0 4px 12px rgba(52, 199, 89, 0.3)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {result.approved ? <Sparkles style={{ width: '22px', height: '22px' }} /> : <AlertCircle style={{ width: '22px', height: '22px' }} />}
-                </div>
-                
-                <div style={{ flexGrow: 1 }}>
-                  <h3 style={{ 
-                    fontSize: '20px', 
-                    fontWeight: 800, 
-                    color: result.approved ? 'var(--color-success)' : 'var(--color-error)',
-                    marginBottom: '8px',
-                    letterSpacing: '-0.02em',
-                  }}>
-                    {result.approved ? '¡Herramienta Aprobada por IA! 🎉' : 'Requisitos Insuficientes'}
-                  </h3>
-
-                  {result.approved && result.skill ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
-                        ¡Felicidades! La herramienta ha superado el filtro mínimo de 10,001 estrellas y el análisis de calidad de Gemini. 
-                        Ha sido guardada e incorporada instantáneamente a la sección de **Recién Agregadas**.
-                      </p>
-                      
-                      {/* Sub-card of the added skill */}
-                      <div style={{ 
-                        background: '#ffffff', 
-                        borderRadius: '14px', 
-                        padding: '16px', 
-                        border: '1px solid rgba(52, 199, 89, 0.15)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            <div style={{ marginTop: '20px' }}>
+              {result.requires_human_review ? (
+                <EvaluationAlertCard
+                  skill={result.skill}
+                  onApproveException={async (skillData) => {
+                    if (onApproveException) {
+                      try {
+                        const saved = await onApproveException(skillData);
+                        setResult({ approved: true, skill: saved });
+                        onToast(`✓ Skill "${saved.name || 'Evaluada'}" aprobada e incluida excepcionalmente.`, 'success');
+                      } catch (err) {
+                        onToast(err.message || 'Error al registrar excepción', 'error');
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    borderRadius: '20px',
+                    border: result.approved ? '2px solid var(--color-success)' : '1px solid rgba(255, 59, 48, 0.2)',
+                    background: result.approved ? 'rgba(52, 199, 89, 0.07)' : 'rgba(255, 59, 48, 0.03)',
+                    padding: '28px',
+                    textAlign: 'left',
+                    boxShadow: result.approved ? '0 8px 24px rgba(52, 199, 89, 0.08)' : 'none',
+                    animation: 'fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '14px',
+                      background: result.approved ? 'var(--color-success)' : 'rgba(255, 59, 48, 0.08)',
+                      color: result.approved ? '#ffffff' : 'var(--color-error)',
+                      boxShadow: result.approved ? '0 4px 12px rgba(52, 199, 89, 0.3)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      {result.approved ? <Sparkles style={{ width: '22px', height: '22px' }} /> : <AlertCircle style={{ width: '22px', height: '22px' }} />}
+                    </div>
+                    
+                    <div style={{ flexGrow: 1 }}>
+                      <h3 style={{ 
+                        fontSize: '20px', 
+                        fontWeight: 800, 
+                        color: result.approved ? 'var(--color-success)' : 'var(--color-error)',
+                        marginBottom: '8px',
+                        letterSpacing: '-0.02em',
                       }}>
-                        <p style={{ fontSize: '15px', color: 'var(--color-text-primary)', fontWeight: 700, margin: '0 0 4px 0' }}>
-                          {result.skill.name}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <span style={{
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            fontSize: '10.5px',
-                            fontWeight: 650,
-                            background: 'var(--color-accent-soft)',
-                            color: 'var(--color-accent)',
-                            textTransform: 'uppercase',
-                          }}>{result.skill.category}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <StarRating rating={result.skill.rating} size={12} />
+                        {result.approved ? '¡Herramienta Aprobada por IA! 🎉' : 'Requisitos Insuficientes'}
+                      </h3>
+
+                      {result.approved && result.skill ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                            ¡Felicidades! La herramienta ha superado el filtro mínimo de 10,001 estrellas y el análisis de calidad de Gemini. 
+                            Ha sido guardada e incorporada instantáneamente a la sección de **Recién Agregadas**.
+                          </p>
+                          
+                          {/* Sub-card of the added skill */}
+                          <div style={{ 
+                            background: '#ffffff', 
+                            borderRadius: '14px', 
+                            padding: '16px', 
+                            border: '1px solid rgba(52, 199, 89, 0.15)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                          }}>
+                            <p style={{ fontSize: '15px', color: 'var(--color-text-primary)', fontWeight: 700, margin: '0 0 4px 0' }}>
+                              {result.skill.name}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '10.5px',
+                                fontWeight: 650,
+                                background: 'var(--color-accent-soft)',
+                                color: 'var(--color-accent)',
+                                textTransform: 'uppercase',
+                              }}>{result.skill.category}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <StarRating rating={result.skill.rating} size={12} />
+                              </div>
+                            </div>
+                            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                              {result.skill.description}
+                            </p>
                           </div>
                         </div>
-                        <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', lineHeight: '1.5', margin: 0 }}>
-                          {result.skill.description}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
-                        {result.reason || 'El repositorio analizado no cumple los criterios de calidad mínimos necesarios para ingresar en el directorio.'}
-                      </p>
-                      {result.canBypass && (
-                        <div style={{ display: 'flex', marginTop: '4px' }}>
-                          <button
-                            type="button"
-                            onClick={handleBypass}
-                            className="cursor-pointer transition-all duration-200 active:scale-[0.97]"
-                            style={{
-                              padding: '8px 16px',
-                              borderRadius: '10px',
-                              background: 'rgba(255, 59, 48, 0.08)',
-                              color: 'var(--color-error)',
-                              fontSize: '13px',
-                              fontWeight: 600,
-                              border: '1px solid rgba(255, 59, 48, 0.25)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'}
-                          >
-                            <Sparkles style={{ width: '14px', height: '14px' }} />
-                            Forzar Evaluación Manual (Caso Excepcional)
-                          </button>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <p style={{ fontSize: '14.5px', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                            {result.reason || 'El repositorio analizado no cumple los criterios de calidad mínimos necesarios para ingresar en el directorio.'}
+                          </p>
+                          {result.canBypass && (
+                            <div style={{ display: 'flex', marginTop: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={handleBypass}
+                                className="cursor-pointer transition-all duration-200 active:scale-[0.97]"
+                                style={{
+                                  padding: '8px 16px',
+                                  borderRadius: '10px',
+                                  background: 'rgba(255, 59, 48, 0.08)',
+                                  color: 'var(--color-error)',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  border: '1px solid rgba(255, 59, 48, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.15)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'}
+                              >
+                                <Sparkles style={{ width: '14px', height: '14px' }} />
+                                Forzar Evaluación Manual (Caso Excepcional)
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
