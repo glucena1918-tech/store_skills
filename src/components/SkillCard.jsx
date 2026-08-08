@@ -1,12 +1,7 @@
 import { Star as StarIcon, Copy, Check, Trash2, Shield, Activity } from 'lucide-react'
 import { useState } from 'react'
 import StarRating from './StarRating'
-
-function formatStars(count) {
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
-  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`
-  return count.toString()
-}
+import { formatStarsK } from '../utils/format'
 
 export default function SkillCard({ skill, onClick, onDelete, style }) {
   const [copied, setCopied] = useState(false)
@@ -71,7 +66,7 @@ export default function SkillCard({ skill, onClick, onDelete, style }) {
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 550 }}>
             <StarIcon style={{ width: '14px', height: '14px', fill: 'var(--color-star)', color: 'var(--color-star)' }} />
-            <span>{formatStars(skill.stars)}</span>
+            <span>{formatStarsK(skill.stars)}</span>
           </div>
 
           {onDelete && (
@@ -142,18 +137,21 @@ export default function SkillCard({ skill, onClick, onDelete, style }) {
         marginTop: 'auto',
       }}>
         <div className="flex items-center gap-1.5" style={{ flexWrap: 'wrap' }}>
-          {skill.language && (
-            <span style={{
-              fontSize: '12px',
-              fontWeight: 500,
-              color: 'var(--color-text-tertiary)',
-              background: 'var(--color-bg-secondary)',
-              padding: '4px 8px',
-              borderRadius: '6px',
-            }}>
-              {skill.language}
-            </span>
-          )}
+          {(() => {
+            const displayLanguage = (!skill.language || skill.language === 'Desconocido') ? 'Markdown / Docs' : skill.language;
+            return (
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'var(--color-text-tertiary)',
+                background: 'var(--color-bg-secondary)',
+                padding: '4px 8px',
+                borderRadius: '6px',
+              }}>
+                {displayLanguage}
+              </span>
+            );
+          })()}
           {skill.license && skill.license !== 'No especificada' && (
             <span style={{
               fontSize: '11px',

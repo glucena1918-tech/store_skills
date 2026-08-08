@@ -1,12 +1,7 @@
 import { X, Copy, Check, ExternalLink, Star as StarIcon, Calendar, Code2, Trash2, Shield, Activity, AlertTriangle, Bot, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import StarRating from './StarRating'
-
-function formatStars(count) {
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
-  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`
-  return count.toString()
-}
+import { formatStarsK, formatNumberLatino } from '../utils/format'
 
 export default function SkillModal({ skill, onClose, onDelete, onReevaluate, onUpdate }) {
   const [copied, setCopied] = useState(false)
@@ -150,7 +145,7 @@ export default function SkillModal({ skill, onClose, onDelete, onReevaluate, onU
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 550 }}>
               <StarIcon style={{ width: '14px', height: '14px', fill: 'var(--color-star)', color: 'var(--color-star)' }} />
-              <span>{formatStars(skill.stars)} estrellas</span>
+              <span>{formatStarsK(skill.stars)} estrellas</span>
             </div>
           </div>
 
@@ -223,16 +218,23 @@ export default function SkillModal({ skill, onClose, onDelete, onReevaluate, onU
                   padding: showTrace ? '14px 18px' : '0px 18px',
                 }}>
                   <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {skill.agent_reasoning_trace.map((step, idx) => (
-                      <li key={`trace-${idx}`} style={{
-                        fontSize: '13px',
-                        color: 'var(--color-text-secondary)',
-                        lineHeight: 1.5,
-                        fontWeight: 500,
-                      }}>
-                        {step}
-                      </li>
-                    ))}
+                    {skill.agent_reasoning_trace.map((step, idx) => {
+                      // Override dictamen for exception skills
+                      const isLastStep = idx === skill.agent_reasoning_trace.length - 1;
+                      const displayStep = (isLastStep && skill.is_exception && step.toLowerCase().includes('dictamen'))
+                        ? 'Paso 4: Dictamen: Aprobado por Excepción Humana (Human-in-the-Loop) — Bajo el umbral estándar de estrellas.'
+                        : step;
+                      return (
+                        <li key={`trace-${idx}`} style={{
+                          fontSize: '13px',
+                          color: 'var(--color-text-secondary)',
+                          lineHeight: 1.5,
+                          fontWeight: 500,
+                        }}>
+                          {displayStep}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>
@@ -488,15 +490,13 @@ export default function SkillModal({ skill, onClose, onDelete, onReevaluate, onU
 
           {/* Metadata Grid Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            {skill.language && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '12px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '12px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
                 <Code2 style={{ width: '16px', height: '16px', color: 'var(--color-text-tertiary)' }} />
                 <div>
                   <p style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', margin: 0, lineHeight: 1.2 }}>Lenguaje</p>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>{skill.language}</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>{(!skill.language || skill.language === 'Desconocido') ? 'Markdown / Docs' : skill.language}</p>
                 </div>
               </div>
-            )}
             
             {skill.last_updated && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '12px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>

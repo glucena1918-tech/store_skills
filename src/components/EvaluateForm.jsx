@@ -304,7 +304,7 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
                     if (onApproveException) {
                       try {
                         const saved = await onApproveException(skillData);
-                        setResult({ approved: true, skill: saved });
+                        setResult({ approved: true, skill: saved, isException: true });
                         onToast(`✓ Skill "${saved.name || 'Evaluada'}" aprobada e incluida excepcionalmente.`, 'success');
                       } catch (err) {
                         onToast(err.message || 'Error al registrar excepción', 'error');
@@ -360,7 +360,7 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
                               </>
                             ) : (
                               <>
-                                ¡Felicidades! La herramienta ha superado el filtro mínimo de 10,001 estrellas y el análisis de calidad de la IA. 
+                                ¡Felicidades! La herramienta ha superado el filtro mínimo de <b>10.001 estrellas</b> y el análisis de calidad de la IA. 
                                 Ha sido guardada e incorporada a la sección de <b>Recién Agregadas</b>.
                               </>
                             )}

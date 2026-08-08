@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Sparkles, Bot, AlertTriangle, ShieldAlert, CheckCircle2, XCircle, ArrowRight, Loader2, Shield } from 'lucide-react'
+import { formatNumberLatino } from '../utils/format'
 
 export default function EvaluationAlertCard({ skill, onApproveException }) {
   const [loading, setLoading] = useState(false)
@@ -72,7 +73,7 @@ export default function EvaluationAlertCard({ skill, onApproveException }) {
           borderRadius: '8px',
           letterSpacing: '0.01em',
         }}>
-          Métricas: {starsCount.toLocaleString('es-ES')} / 10,001 estrellas (Bajo el umbral)
+          Métricas: {formatNumberLatino(starsCount)} / {formatNumberLatino(10001)} estrellas (Bajo el umbral)
         </span>
       </div>
 
@@ -99,16 +100,14 @@ export default function EvaluationAlertCard({ skill, onApproveException }) {
               color: 'var(--color-accent)',
               textTransform: 'uppercase',
             }}>{skill.category}</span>
-            {skill.language && (
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontSize: '10.5px',
-                fontWeight: 650,
-                background: 'rgba(0,0,0,0.05)',
-                color: 'var(--color-text-secondary)',
-              }}>{skill.language}</span>
-            )}
+            <span style={{
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '10.5px',
+              fontWeight: 650,
+              background: 'rgba(0,0,0,0.05)',
+              color: 'var(--color-text-secondary)',
+            }}>{(!skill.language || skill.language === 'Desconocido') ? 'Markdown / Docs' : skill.language}</span>
             {skill.license && skill.license !== 'No especificada' && (
               <span style={{
                 padding: '2px 8px',

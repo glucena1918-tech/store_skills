@@ -304,6 +304,15 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       ...skillData,
       approved: true,
       is_exception: true,
+      // Ensure all AI-generated fields are persisted
+      license: skillData.license || 'No especificada',
+      maintenance_status: skillData.maintenance_status || 'Activo',
+      risk_level: skillData.risk_level || 'Bajo',
+      agent_prompt: skillData.agent_prompt || null,
+      agent_reasoning_trace: skillData.agent_reasoning_trace || [],
+      pros: skillData.pros || [],
+      cons: skillData.cons || [],
+      agent_recommendation: skillData.agent_recommendation || null,
     };
     
     // Quitar prefijos de ID temporales para que Postgres genere el UUID real
