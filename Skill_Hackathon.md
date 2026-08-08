@@ -84,6 +84,15 @@ graph TD
         "Paso 3: Clasificación automática...",
         "Paso 4: Dictamen final..."
       ],
+      "pros": [
+        "Punto fuerte 1 (ej: soporte TypeScript, documentación excelente...)",
+        "Punto fuerte 2..."
+      ],
+      "cons": [
+        "Punto a considerar 1 (ej: pocas estrellas, sin licencia...)",
+        "Punto a considerar 2..."
+      ],
+      "agent_recommendation": "Recomendación cualitativa sobre si se aconseja integrar la herramienta.",
       "rating": 5,
       "approved": true,
       "reason": ""
@@ -135,6 +144,28 @@ Si la base de datos de Supabase sufre una caída de red o no está inicializada:
 ### 🗑️ 9. Bypass de Límite de Estrellas (BypassMinStars)
 *   Se implementó una casilla inteligente de verificación en el formulario de envío. Si un usuario propone una herramienta increíble pero que no posee las 10,001 estrellas de GitHub requeridas, el sistema detecta que no cumple el mínimo y muestra un aviso interactivo que le permite forzar la evaluación si considera que es de altísimo valor para la comunidad.
 
+### 📊 10. Evaluación Holística Agéntica con Diagnóstico de Pros/Contras
+*   La IA analiza SIEMPRE la totalidad del repositorio (independientemente del número de estrellas) y genera un informe cualitativo detallado con **Puntos Fuertes (Pros)**, **Puntos a Considerar (Contras)** y una **Recomendación Sugerida**.
+*   La aprobación final se delega al usuario humano mediante el botón de evaluación excepcional (*Human-in-the-Loop*).
+*   Los Pros y Contras están regidos por una regla estricta de **exclusión mutua**: la IA no puede contradecirse entre ambos arrays.
+
+### 🚨 11. Protocolo de Bloqueo Crítico por Riesgo de Seguridad
+*   Si la IA detecta código malicioso, inyección de scripts o dependencias con riesgo alto (`risk_level === 'Alto'`), el sistema renderiza una **Alerta Crítica Roja de Seguridad** (`🚨 AMENAZA DE SEGURIDAD DETECTADA`).
+*   El botón de aprobación excepcional se **DESHABILITA permanentemente** (`🛑 Aprobación Manual Bloqueada por Riesgo de Seguridad`) para proteger la integridad de la plataforma.
+*   Esta lógica opera tanto en la Edge Function remota como en el evaluador local del frontend.
+
+### ⌨️ 12. Barra de Estadísticas de Impacto y Atajo de Teclado (Hero UX)
+*   **Stats Ribbon:** Franja horizontal de 3 distintivos (*pills*) translúcidos centrados que muestran estadísticas dinámicas de la plataforma en tiempo real:
+    *   ⚡ `{skills.length}` Skills Curadas (conteo dinámico vinculado al estado de React)
+    *   🛡️ 100% Auditadas con IA
+    *   🇪🇸 100% en Español
+*   **Atajo `Ctrl+K` / `⌘K`:** Escuchador global de teclado que enfoca automáticamente la barra de búsqueda. El badge `<kbd>` se adapta dinámicamente al sistema operativo del usuario (Windows vs macOS).
+*   **Resplandor Ambiental (Mesh Glow):** Capa decorativa de luz difuminada azul/violeta por detrás del título principal para generar profundidad visual sin afectar la legibilidad.
+
+### 🔢 13. Formato Numérico Latino / Español
+*   Todos los números de la interfaz usan la notación hispana: separador de miles con punto (`.`) y decimales con coma (`,`).
+*   Helper reutilizable `formatNumberLatino()` y `formatStarsK()` en `src/utils/format.js`.
+
 ---
 
 ## 🎨 Diseño Visual y UX Premium (Apple-Style)
@@ -144,6 +175,7 @@ Se aplicaron principios rigurosos de diseño limpio, moderno e interactivo:
 *   **Microinteracciones:** Transiciones y animaciones suaves al hacer hover sobre las tarjetas (`transform: translateY(-4px)` y sombras dinámicas).
 *   **Ambiente Premium:** Inclusión de efectos visuales de fondo como gradientes de malla suaves (`bg-mesh-glow`) y una red geométrica que imita redes neuronales o flujos de agentes (`bg-network-nodes`).
 *   **Sistema de Avisos (Toast):** Notificaciones flotantes no intrusivas que confirman acciones como copiado de comandos o eliminaciones exitosas.
+*   **Resplandor Ambiental (Mesh Glow):** Halo de luz azul/violeta difuminado detrás del título principal del Hero Section.
 
 ---
 
@@ -207,4 +239,7 @@ La base de datos remota de Supabase ha sido completamente conectada, configurada
 ---
 
 ## 🏁 Conclusión y Preparación para el Pitch
-SkillAI demuestra cómo la Inteligencia Artificial puede ser un facilitador de integración de software y una herramienta de democratización del conocimiento técnico. La robustez técnica agregada (el flujo dual de evaluación, la resiliencia contra fallas de base de datos y la interactividad avanzada) garantizan una presentación sólida y a prueba de errores durante la demostración en vivo de la hackathon.
+SkillAI demuestra cómo la Inteligencia Artificial puede ser un facilitador de integración de software y una herramienta de democratización del conocimiento técnico. La robustez técnica agregada (el flujo dual de evaluación, la resiliencia contra fallas de base de datos, la interactividad avanzada, la evaluación holística agéntica con diagnóstico de pros/contras, el protocolo de bloqueo por riesgo de seguridad y las mejoras de UX del Hero) garantizan una presentación sólida y a prueba de errores durante la demostración en vivo de la hackathon.
+
+**Producción en vivo:** [https://store-skills.vercel.app](https://store-skills.vercel.app)  
+**Repositorio:** [https://github.com/glucena1918-tech/store_skills](https://github.com/glucena1918-tech/store_skills)

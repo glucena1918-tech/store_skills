@@ -23,24 +23,26 @@
 
 | Capa | Tecnología | Propósito |
 |------|-----------|-----------|
-| Frontend | React + Vite + Tailwind CSS | Interfaz de usuario |
-| Backend | Node.js + Express | API REST |
-| Base de Datos | Supabase (PostgreSQL) | Almacenamiento de skills |
-| IA Evaluadora | Google Gemini API (AI Studio) | Evaluación automática |
+| Frontend | React + Vite + Tailwind CSS | Interfaz de usuario responsiva y premium |
+| Backend | Supabase Edge Functions (Deno) | Evaluación IA serverless |
+| Base de Datos | Supabase (PostgreSQL) | Almacenamiento persistente + RLS |
+| IA Evaluadora | Groq API (Llama 3.3 70B) | Evaluación y curación automática |
+| Datos Externos | GitHub API | Extracción de metadatos y README |
 | Control de Versiones | GitHub | Repositorio del código |
-| Deploy Frontend | Vercel | Hosting gratuito |
-| Deploy Backend | Railway o Vercel Serverless | Hosting gratuito |
+| Deploy Frontend | Vercel | Hosting + CI/CD desde GitHub |
+| Deploy Backend | Supabase Edge Functions | Runtime Deno integrado |
 
 ---
 
 ## 🔑 Credenciales y Configuración
 
 ```
-GITHUB REPO:       glimvac/skillai
-GITHUB URL:        https://github.com/glimvac/skillai.git
-SUPABASE URL:      https://ckzpbnweaoiwtyxlnxey.supabase.co
-SUPABASE REGIÓN:   East US (Ohio)
-GEMINI API:        Google AI Studio (cuenta personal)
+GITHUB REPO:       glucena1918-tech/store_skills
+GITHUB URL:        https://github.com/glucena1918-tech/store_skills
+PRODUCCION URL:    https://store-skills.vercel.app
+SUPABASE URL:      https://tlhbpzwzqmcrutwxomqy.supabase.co
+SUPABASE REGIÓN:   East US
+GROQ API:          Groq Cloud (Llama 3.3 70B Versatile)
 NODE VERSION:      v22.18.0
 NPM VERSION:       11.6.3
 ```
@@ -66,11 +68,11 @@ ELSE:
 ### ¿Cómo Evalúa la IA?
 1. Usuario ingresa URL de GitHub
 2. Sistema descarga README via GitHub API
-3. Extrae: stars, forks, lenguaje, última actualización
-4. Envía datos a Gemini con prompt estructurado
-5. Gemini retorna JSON con evaluación completa
-6. Sistema guarda en Supabase si es aprobado
-7. Aparece en el directorio automáticamente
+3. Extrae: stars, forks, lenguaje, última actualización, licencia
+4. Envía datos a Groq (Llama 3.3 70B) con prompt estructurado de alta precisión
+5. La IA retorna JSON con evaluación completa incluyendo pros, contras y recomendación
+6. Sistema guarda en Supabase si es aprobado (o muestra dictamen holístico si es rechazado)
+7. Aparece en el directorio automáticamente con actualización optimista del estado React
 
 ### Categorías (Dinámicas - IA las Deduce)
 La IA asigna automáticamente la categoría según el contenido del README:
@@ -83,6 +85,8 @@ La IA asigna automáticamente la categoría según el contenido del README:
 - Security
 - AI / ML
 - API & Integration
+- Mobile
+- CLI Tools
 
 > **Ventaja:** Si aparece una categoría nueva, la IA la crea automáticamente. No hay categorías hardcodeadas.
 
@@ -99,11 +103,20 @@ CRITERIOS DE APROBACIÓN:
 RESPONDE CON ESTE JSON:
 {
   "name": "nombre de la skill",
-  "description": "descripción en español (max 150 palabras)",
-  "use_case": "cuándo y para quién usarla (max 50 palabras)",
+  "description": "descripción en español (150-250 palabras)",
+  "use_case": "cuándo y para quién usarla (50-100 palabras)",
+  "example_usage": "ejemplo práctico de código",
   "category": "categoría deducida automáticamente",
   "install_command": "comando de instalación principal",
   "language": "lenguaje principal",
+  "license": "MIT / Apache-2.0 / etc.",
+  "maintenance_status": "Activo | Mantenimiento | Inactivo",
+  "risk_level": "Bajo | Medio | Alto",
+  "agent_prompt": "Instrucción de Sistema para Agentes IA",
+  "agent_reasoning_trace": ["Paso 1...", "Paso 2...", "Paso 3...", "Paso 4..."],
+  "pros": ["Punto fuerte 1", "Punto fuerte 2"],
+  "cons": ["Punto a considerar 1", "Punto a considerar 2"],
+  "agent_recommendation": "Recomendación cualitativa",
   "approved": true/false,
   "reason": "motivo si es rechazado"
 }
@@ -136,53 +149,51 @@ RESPONDE CON ESTE JSON:
 
 ### Configuración RLS (Row Level Security)
 - **Lectura:** Pública (cualquier usuario puede ver skills aprobadas)
-- **Escritura:** Solo via API key del backend
-- **Modificación:** Solo administrador
+- **Escritura:** Solo via `service_role` key desde Edge Functions o cliente admin
+- **Eliminación:** Permitida desde Edge Function y frontend admin
+- **Actualización:** Permitida desde Edge Function con `WITH CHECK (true)`
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```
-skillai/
+hackathon_big_school/
 │
 ├── .gitignore
-├── .env.example
-├── README.md
+├── .env                              ← Credenciales (NO subir a GitHub)
+├── .env.example                      ← Plantilla de variables de entorno
+├── Skill_Hackathon.md                ← Ficha técnica del hackathon
+├── SkillAI_Plan_Completo.md          ← Plan maestro del proyecto
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
 │
-├── backend/
-│   ├── package.json
-│   ├── .env                          ← Credenciales (NO subir a GitHub)
-│   └── src/
-│       ├── server.js                 ← Servidor Express principal
-│       ├── services/
-│       │   ├── github.service.js     ← Descarga README y métricas
-│       │   ├── gemini.service.js     ← Evalúa skill con IA
-│       │   └── supabase.service.js   ← Guarda y consulta BD
-│       └── routes/
-│           └── skills.routes.js      ← Endpoints API REST
+├── src/
+│   ├── App.jsx                       ← Componente raíz + orquestador principal
+│   ├── index.css                     ← CSS global + design tokens Apple-style
+│   ├── main.jsx                      ← Entry point de React
+│   ├── components/
+│   │   ├── Navbar.jsx                ← Barra superior glassmorphism
+│   │   ├── Hero.jsx                  ← Hero section + Stats Ribbon + Búsqueda + Ctrl+K
+│   │   ├── FilterBar.jsx             ← Filtros: categoría, rating, orden, stars
+│   │   ├── SkillCard.jsx             ← Tarjeta de cada skill (con auditoría y badges)
+│   │   ├── SkillModal.jsx            ← Modal con detalle completo + pros/contras
+│   │   ├── SkillGrid.jsx             ← Grid responsivo de cards
+│   │   ├── AddSkillForm.jsx          ← Formulario de evaluación + bypass stars
+│   │   ├── ConfirmModal.jsx          ← Confirmación de eliminación doble factor
+│   │   └── Toast.jsx                 ← Notificaciones flotantes
+│   ├── services/
+│   │   ├── supabase.js               ← Cliente Supabase (anon + service_role)
+│   │   └── skillService.js           ← CRUD completo: fetch, save, update, delete
+│   └── utils/
+│       └── format.js                 ← formatNumberLatino, formatStarsK
 │
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.jsx
-│       ├── index.css
-│       ├── components/
-│       │   ├── Navbar.jsx            ← Menú superior translúcido
-│       │   ├── Hero.jsx              ← Landing hero section
-│       │   ├── FilterBar.jsx         ← Filtros: categoría, rating, orden
-│       │   ├── SkillCard.jsx         ← Tarjeta de cada skill
-│       │   ├── SkillModal.jsx        ← Modal con detalle completo
-│       │   └── SkillGrid.jsx         ← Grid responsivo de cards
-│       └── services/
-│           └── api.js                ← Cliente Axios al backend
-│
-└── docs/
-    ├── arquitectura.md
-    ├── prompt-ia.md
-    ├── casos-rechazo.md
-    └── deployment.md
+└── supabase/
+    ├── setup.sql                     ← Esquema de tabla + políticas RLS
+    └── functions/
+        └── evaluate-skill/
+            └── index.ts                  ← Edge Function (Deno) para evaluación IA
 ```
 
 ---
@@ -249,16 +260,17 @@ Cada tarjeta muestra:
 Al hacer click en una card:
 - Descripción completa en español
 - Sección "¿Cuándo usarla?"
+- Ejemplo de uso / código práctico
+- Cuadro tripartito de auditoría: Licencia • Mantenimiento • Riesgo
+- **Puntos Fuertes (Pros)** y **Puntos a Considerar (Contras)** con chips
+- **Recomendación Sugerida** por la IA
 - Comando de instalación (con botón copiar)
 - Lenguaje principal
 - Última actualización
 - Link directo a GitHub
-
----
-
-## 🔌 API REST (Backend)
-
-### Endpoints
+- **Prompt de Integración para tu Agente IA** (copiable con un clic)
+- **Traza de Razonamiento** desplegable (4 pasos del dictamen del Agente)
+- Botón **"Actualizar con IA"** para re-evaluación en tiempo real
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
@@ -344,15 +356,20 @@ Buscar repos con:
 
 ## 🚀 Roadmap (Versiones)
 
-### V0 - MVP Académico (ACTUAL)
+### V0 - MVP Académico (COMPLETADO ✅)
 - [x] Definición del proyecto
 - [x] Stack tecnológico definido
-- [x] Diseño Apple-style aprobado
-- [x] Backend: GitHub API + Gemini/Groq + Supabase (Híbrido Edge Function + Fallback local)
-- [x] Frontend: Landing + Filtros + Cards + Modal (Actualizado con Auditoría, Prompt e Historial)
-- [x] 15-20 skills evaluadas y funcionando
-- [x] 4-5 casos de rechazo documentados
-- [/] Deploy en Vercel (Pendiente configurar variables de entorno para producción)
+- [x] Diseño Apple-style implementado
+- [x] Backend: GitHub API + Groq (Llama 3.3 70B) + Supabase (Híbrido Edge Function + Fallback local)
+- [x] Frontend: Landing + Filtros + Cards + Modal (con Auditoría, Prompt, Pros/Contras, Protocolo de Seguridad)
+- [x] Hero Section premium: Stats Ribbon + Ctrl+K + Mesh Glow
+- [x] Formato numérico latino (separador de miles con punto)
+- [x] 6 skills evaluadas y funcionando con datos reales en Supabase
+- [x] Evaluación holística agéntica con dictamen cualitativo
+- [x] Protocolo de bloqueo crítico por riesgo de seguridad
+- [x] Deploy completo en Vercel (CI/CD desde GitHub master)
+- [x] Base de datos Supabase activa y conectada
+- [x] Documentación actualizada
 - [ ] Video demostración
 
 ### V1 - Post Entrega (Monitoreo)
@@ -431,17 +448,15 @@ Buscar repos con:
 
 ```env
 # Supabase
-SUPABASE_URL=https://ckzpbnweaoiwtyxlnxey.supabase.co
-SUPABASE_ANON_KEY=tu_anon_key_aqui
+VITE_SUPABASE_URL=https://tlhbpzwzqmcrutwxomqy.supabase.co
+VITE_SUPABASE_ANON_KEY=tu_anon_key_aqui
+SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_aqui
 
-# Google Gemini
-GEMINI_API_KEY=tu_gemini_key_aqui
+# Groq (Motor de IA)
+VITE_GROQ_API_KEY=tu_groq_api_key_aqui
 
 # GitHub (opcional pero recomendado para más requests)
 GITHUB_TOKEN=tu_github_token_aqui
-
-# Servidor
-PORT=3000
 ```
 
 ---
@@ -484,12 +499,13 @@ PORT=3000
 
 ## 👨‍💻 Autor
 
-- **Nombre:** Gonzalo (glimvac)
-- **GitHub:** https://github.com/glimvac
+- **Nombre:** Gonzalo Lucena
+- **GitHub:** https://github.com/glucena1918-tech
 - **Proyecto:** SkillAI v1.0
 - **Institución:** BIG SCHOOL - Curso IA
+- **Producción:** https://store-skills.vercel.app
 
 ---
 
 *Documento generado como plan de referencia para el desarrollo de SkillAI*  
-*Fecha: Julio 2026*
+*Última actualización: Agosto 2026*
