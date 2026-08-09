@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabase'
 
+// Función para extraer solo el objeto JSON entre llaves { ... }
+const extractJson = (text) => {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    return JSON.parse(match[0]);
+  }
+  throw new Error("No se encontró un bloque JSON válido en la respuesta de la IA.");
+};
+
 export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
@@ -40,12 +49,9 @@ README: ${readmeText.slice(0, 3000)}`;
   }
 
   const data = await response.json();
-  let rawText = data.choices[0]?.message?.content || "";
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    rawText = jsonMatch[0];
-  }
-  return JSON.parse(rawText);
+  const rawText = data.choices[0]?.message?.content || "";
+  const parsedData = extractJson(rawText);
+  return parsedData;
 };
 
 export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
