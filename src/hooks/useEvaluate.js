@@ -14,7 +14,6 @@ export function useEvaluate() {
     console.log('[Store Skills] Iniciando evaluación para:', url, 'bypassMinStars:', bypassMinStars);
     
     // Evaluación directa desde el Frontend (GitHub API + IA API)
-    // Edge Function deshabilitada — las variables VITE_CEREBRAS_* se leen directamente de Vercel.
     return await evaluateLocally(url, bypassMinStars);
   }
 
@@ -86,7 +85,7 @@ export function useEvaluate() {
       readmeContent = '(README no disponible)';
     }
 
-    // ── 4. Evaluar con Cerebras y guardar en Supabase vía skillService ──
+    // ── 4. Evaluar IA y guardar en Supabase vía skillService ──
     return await evaluateSkill(
       { name: repoName, stars },
       readmeContent,

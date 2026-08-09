@@ -1,54 +1,5 @@
 import { supabase } from '../lib/supabase'
 
-export const evaluateWithCerebras = async (repoMetadata, readmeText) => {
-  const apiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("La variable VITE_CEREBRAS_API_KEY no está configurada.");
-  }
-
-  const systemPrompt = `Eres un curador de Skills de IA para desarrolladores hispanohablantes.
-Analiza el repositorio y responde ÚNICAMENTE con un objeto JSON válido sin bloques de código Markdown ni texto extra.
-JSON con los campos: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.`;
-
-  const userPrompt = `Analiza este repositorio:
-Nombre: ${repoMetadata.name}
-Estrellas: ${repoMetadata.stars}
-README: ${readmeText.slice(0, 3000)}`;
-
-  const endpoint = "https://api.cerebras.ai/v1/chat/completions";
-  const model = "llama-3.3-70b";
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.2
-    })
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Error Cerebras API (${response.status}): ${errorData.error?.message || response.statusText}`);
-  }
-
-  const data = await response.json();
-  let rawJson = data.choices[0].message.content || "";
-  const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    rawJson = jsonMatch[0];
-  }
-  return JSON.parse(rawJson);
-};
-
 export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
   const {
     bypassMinStars = false,
@@ -59,8 +10,7 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     original_url = `https://github.com/${owner}/${repoName}`
   } = options;
 
-  // 1. Evaluar directamente llamando a evaluateWithCerebras
-  const evaluation = await evaluateWithCerebras(repoMetadata, readmeText);
+  throw new Error("No hay un proveedor de IA configurado actualmente.");
 
   // 2. Validar rating asignado por la IA
   const rating = Number(evaluation.rating) || 0;
