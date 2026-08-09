@@ -25,7 +25,7 @@ README: ${readmeText.slice(0, 3000)}`;
       "X-Title": "SkillAI Store"
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
+      model: "openrouter/free",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
