@@ -12,28 +12,8 @@ export function useEvaluate() {
   const evaluate = async (url, bypassMinStars = false) => {
     console.log('[Store Skills] Iniciando evaluación para:', url, 'bypassMinStars:', bypassMinStars);
     
-    try {
-      // 1. Intentar Edge Function con timeout de 8 segundos
-      const edgePromise = supabase.functions.invoke('evaluate-skill', {
-        body: { url, bypassMinStars },
-      });
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Edge Function timeout')), 8000)
-      );
-      
-      const { data, error } = await Promise.race([edgePromise, timeoutPromise]);
-
-      if (!error && data) {
-        console.log('[Store Skills] Evaluación exitosa mediante Edge Function.');
-        return data;
-      }
-      
-      console.warn('[Store Skills] Edge Function no disponible. Ejecutando evaluación directa...');
-    } catch (e) {
-      console.warn('[Store Skills] Edge Function inaccesible. Ejecutando evaluación directa...', e.message);
-    }
-
-    // 2. Evaluación directa desde el Frontend (GitHub API + IA API)
+    // Evaluación directa desde el Frontend (GitHub API + IA API)
+    // Edge Function deshabilitada — las variables VITE_CEREBRAS_* se leen directamente de Vercel.
     return await evaluateLocally(url, bypassMinStars);
   }
 
@@ -190,7 +170,12 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
 
       if (!response.ok) {
         const status = response.status;
-        throw new Error(`${providerName} API respondió con HTTP ${status} ${response.statusText}`);
+        let errorDetail = response.statusText;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData?.error?.message || errorData?.message || JSON.stringify(errorData);
+        } catch { /* no parseable body */ }
+        throw new Error(`${providerName} API (HTTP ${status}): ${errorDetail}`);
       }
 
       const resData = await response.json();
@@ -211,14 +196,16 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
 
     // ── Intento 1: Cerebras API (llama-3.3-70b) ──
     const cerebrasApiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
-    const cerebrasBaseUrl = import.meta.env.VITE_CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1';
     const cerebrasModel = import.meta.env.VITE_CEREBRAS_MODEL || 'llama-3.3-70b';
+    const cerebrasEndpoint = 'https://api.cerebras.ai/v1/chat/completions';
+
+    console.log('[Store Skills] Clave Cerebras detectada:', cerebrasApiKey ? 'SÍ' : 'NO');
 
     if (cerebrasApiKey) {
       try {
         evaluation = await callAIProvider(
           'Cerebras',
-          `${cerebrasBaseUrl}/chat/completions`,
+          cerebrasEndpoint,
           cerebrasApiKey,
           cerebrasModel,
           15000
