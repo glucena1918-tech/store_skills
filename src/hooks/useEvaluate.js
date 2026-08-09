@@ -190,62 +190,33 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       return JSON.parse(jsonMatch[0]);
     };
 
-    // ── 5. Cadena de evaluación con fallback: Cerebras → Groq → Demo ──
+    // ── 5. Evaluación con Cerebras API (proveedor único) ──
     let evaluation = null;
-    let providerUsed = 'ninguno';
 
-    // ── Intento 1: Cerebras API (llama-3.3-70b) ──
     const cerebrasApiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
     const cerebrasModel = import.meta.env.VITE_CEREBRAS_MODEL || 'llama-3.3-70b';
     const cerebrasEndpoint = 'https://api.cerebras.ai/v1/chat/completions';
 
     console.log('[Store Skills] Clave Cerebras detectada:', cerebrasApiKey ? 'SÍ' : 'NO');
 
-    if (cerebrasApiKey) {
-      try {
-        evaluation = await callAIProvider(
-          'Cerebras',
-          cerebrasEndpoint,
-          cerebrasApiKey,
-          cerebrasModel,
-          15000
-        );
-        providerUsed = 'Cerebras';
-      } catch (err) {
-        console.warn(`[Store Skills] Cerebras falló: ${err.message}. Intentando Groq como fallback...`);
-      }
-    } else {
-      console.warn('[Store Skills] VITE_CEREBRAS_API_KEY no configurada. Saltando Cerebras...');
+    if (!cerebrasApiKey) {
+      throw new Error('La clave VITE_CEREBRAS_API_KEY no está configurada. Verifica las variables de entorno.');
     }
 
-    // ── Intento 2: Groq API (llama-3.3-70b-versatile) ──
-    if (!evaluation) {
-      const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
-      if (groqApiKey) {
-        try {
-          evaluation = await callAIProvider(
-            'Groq',
-            'https://api.groq.com/openai/v1/chat/completions',
-            groqApiKey,
-            'llama-3.3-70b-versatile',
-            20000
-          );
-          providerUsed = 'Groq';
-        } catch (err) {
-          console.warn(`[Store Skills] Groq falló: ${err.message}.`);
-        }
-      } else {
-        console.warn('[Store Skills] VITE_GROQ_API_KEY no configurada. Saltando Groq...');
-      }
+    try {
+      evaluation = await callAIProvider(
+        'Cerebras',
+        cerebrasEndpoint,
+        cerebrasApiKey,
+        cerebrasModel,
+        15000
+      );
+    } catch (err) {
+      console.error(`[Store Skills] Cerebras falló: ${err.message}`);
+      throw new Error(`No se pudo conectar con Cerebras AI: ${err.message}`);
     }
 
-    // ── Si ningún proveedor de IA respondió, lanzar error transparente ──
-    if (!evaluation) {
-      console.error('[Store Skills] Todos los proveedores de IA fallaron. No se generará evaluación sintética.');
-      throw new Error('No se pudo conectar con el servicio de IA. Por favor, verifica tu conexión o las variables de entorno e intenta de nuevo.');
-    }
-
-    console.log(`[Store Skills] Evaluación completada con proveedor: ${providerUsed}`);
+    console.log('[Store Skills] Evaluación completada con Cerebras.');
 
     // ── 6. Validar rating asignado por la IA ─────────────
     const rating = Number(evaluation.rating) || 0;
