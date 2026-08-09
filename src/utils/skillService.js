@@ -1,5 +1,12 @@
 import { supabase } from '../lib/supabase'
 
+// Helper para garantizar formato de Array de JavaScript
+const ensureArray = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.trim()) return [val.trim()];
+  return [];
+};
+
 // Función para extraer solo el objeto JSON entre llaves { ... }
 const extractJson = (text) => {
   const match = text.match(/\{[\s\S]*\}/);
@@ -89,9 +96,9 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     maintenance_status: evaluation.maintenance_status || 'Activo',
     risk_level: evaluation.risk_level || 'Medio',
     agent_prompt: evaluation.agent_prompt || '',
-    agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
-    pros: evaluation.pros || [],
-    cons: evaluation.cons || [],
+    agent_reasoning_trace: ensureArray(evaluation.agent_reasoning_trace),
+    pros: ensureArray(evaluation.pros),
+    cons: ensureArray(evaluation.cons),
     agent_recommendation: evaluation.agent_recommendation || '',
     is_exception: bypassMinStars,
     language: language,
