@@ -123,11 +123,8 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     .single();
 
   if (saveError) {
-    console.warn('[Store Skills] No se pudo guardar en Supabase, devolviendo datos locales:', saveError.message);
-    return {
-      approved: true,
-      skill: { ...skillData, id: `loc-${Date.now()}` },
-    };
+    console.error("Error al guardar en Supabase:", saveError.message);
+    throw new Error(`Error al guardar en base de datos: ${saveError.message}`);
   }
 
   console.log('[Store Skills] Skill guardada en Supabase exitosamente:', savedSkill.name);
