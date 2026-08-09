@@ -25,7 +25,20 @@ export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
 
   const systemPrompt = `Eres un curador de Skills de IA para desarrolladores hispanohablantes.
 Analiza el repositorio y responde ÚNICAMENTE con un objeto JSON válido sin bloques de código Markdown ni texto extra.
-JSON con los campos: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.`;
+JSON con los campos: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.
+
+REGLA DE IDIOMA Y ESTRUCTURA OBLIGATORIA:
+1. Redacta TODO el contenido del JSON estrictamente en ESPAÑOL.
+2. El campo "agent_reasoning_trace" DEBE SER SIEMPRE UN ARRAY DE EXACTAMENTE 4 ELEMENTOS EN ESPAÑOL siguiendo este formato exacto:
+
+"agent_reasoning_trace": [
+  "Paso 1: Verificación de repositorio: [número de estrellas] estrellas en GitHub.",
+  "Paso 2: Análisis de README: [resumen breve en español de la documentación].",
+  "Paso 3: Clasificación automática: Categoría [Categoría asignada].",
+  "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) - Bajo el umbral / Bloqueado por Riesgo Alto]"
+]
+
+QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN INGLÉS.`;
 
   const userPrompt = `Analiza este repositorio:
 Nombre: ${repoMetadata.name}
