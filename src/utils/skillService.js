@@ -1,5 +1,53 @@
 import { supabase } from '../lib/supabase'
 
+export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("La variable VITE_OPENROUTER_API_KEY no está configurada.");
+  }
+
+  const systemPrompt = `Eres un curador de Skills de IA para desarrolladores hispanohablantes.
+Analiza el repositorio y responde ÚNICAMENTE con un objeto JSON válido sin bloques de código Markdown ni texto extra.
+JSON con los campos: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.`;
+
+  const userPrompt = `Analiza este repositorio:
+Nombre: ${repoMetadata.name}
+Estrellas: ${repoMetadata.stars}
+README: ${readmeText.slice(0, 3000)}`;
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://store-skills.vercel.app",
+      "X-Title": "SkillAI Store"
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-3.3-70b-instruct:free",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.2
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Error OpenRouter API (${response.status}): ${errorData.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  let rawText = data.choices[0]?.message?.content || "";
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    rawText = jsonMatch[0];
+  }
+  return JSON.parse(rawText);
+};
+
 export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
   const {
     bypassMinStars = false,
@@ -10,7 +58,8 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     original_url = `https://github.com/${owner}/${repoName}`
   } = options;
 
-  throw new Error("No hay un proveedor de IA configurado actualmente.");
+  // 1. Evaluar llamando a OpenRouter API (Llama 3.3 70B Free)
+  const evaluation = await evaluateWithOpenRouter(repoMetadata, readmeText);
 
   // 2. Validar rating asignado por la IA
   const rating = Number(evaluation.rating) || 0;
