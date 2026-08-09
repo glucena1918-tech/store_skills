@@ -16,14 +16,17 @@ Nombre: ${repoMetadata.name}
 Estrellas: ${repoMetadata.stars}
 README: ${readmeText.slice(0, 3000)}`;
 
-  const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+  const endpoint = "https://api.cerebras.ai/v1/chat/completions";
+  const model = "llama-3.3-70b";
+
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: import.meta.env.VITE_CEREBRAS_MODEL || "llama-3.3-70b",
+      model: model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
