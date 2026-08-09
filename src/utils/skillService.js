@@ -31,8 +31,7 @@ README: ${readmeText.slice(0, 3000)}`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.2,
-      response_format: { type: "json_object" }
+      temperature: 0.2
     })
   });
 
@@ -42,7 +41,11 @@ README: ${readmeText.slice(0, 3000)}`;
   }
 
   const data = await response.json();
-  const rawJson = data.choices[0].message.content;
+  let rawJson = data.choices[0].message.content || "";
+  const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    rawJson = jsonMatch[0];
+  }
   return JSON.parse(rawJson);
 };
 
