@@ -33,7 +33,7 @@ export function useEvaluate() {
       console.warn('[Store Skills] Edge Function inaccesible. Ejecutando evaluación directa...', e.message);
     }
 
-    // 2. Evaluación directa desde el Frontend (GitHub API + Gemini API)
+    // 2. Evaluación directa desde el Frontend (GitHub API + IA API)
     return await evaluateLocally(url, bypassMinStars);
   }
 
@@ -46,46 +46,6 @@ export function useEvaluate() {
 
     const [, owner, repo] = match;
     const repoName = repo.replace(/\.git$/, '');
-
-    // Hook de prueba de seguridad
-    if (url.includes('test-security')) {
-      const skillData = {
-        name: 'Test Security Library',
-        description: 'Librería de prueba para verificar el bloqueo de seguridad de riesgo alto.',
-        use_case: 'Verificar el comportamiento del sistema ante código sospechoso.',
-        example_usage: 'npm install test-security',
-        category: 'Security',
-        install_command: 'npm install test-security',
-        license: 'No especificada',
-        maintenance_status: 'Inactivo',
-        risk_level: 'Alto',
-        agent_prompt: 'No disponible por razones de seguridad.',
-        agent_reasoning_trace: [
-          'Paso 1: Validación del repositorio: 50 estrellas.',
-          'Paso 2: Análisis del README: Encontrados scripts de inyección maliciosa.',
-          'Paso 3: Categorización automática: Security.',
-          'Paso 4: Dictamen: Rechazado por riesgo crítico.'
-        ],
-        pros: ['Ninguno (Riesgo Crítico)'],
-        cons: ['Inyección de código detectada', 'Dependencias con vulnerabilidades graves'],
-        agent_recommendation: 'Bloquear inmediatamente la integración del repositorio.',
-        is_exception: false,
-        language: 'JavaScript',
-        stars: 50,
-        rating: 1,
-        original_url: url,
-        repo_owner: owner,
-        repo_name: repoName,
-        last_updated: 'Hoy',
-        approved: false,
-        reason: 'Amenaza de seguridad detectada.',
-      };
-      return {
-        approved: false,
-        requires_human_review: true,
-        skill: { ...skillData, id: `temp-${Date.now()}` }
-      };
-    }
 
     // ── 1. Fetch metadata de GitHub API (timeout 10s) ────
     console.log(`[Store Skills] Consultando GitHub API para ${owner}/${repoName}...`);
@@ -285,41 +245,17 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
           );
           providerUsed = 'Groq';
         } catch (err) {
-          console.warn(`[Store Skills] Groq falló: ${err.message}. Intentando fallback local...`);
+          console.warn(`[Store Skills] Groq falló: ${err.message}.`);
         }
       } else {
         console.warn('[Store Skills] VITE_GROQ_API_KEY no configurada. Saltando Groq...');
       }
     }
 
-    // ── Intento 3: Fallback local con catálogo DEMO_SKILLS ──
+    // ── Si ningún proveedor de IA respondió, lanzar error transparente ──
     if (!evaluation) {
-      console.warn('[Store Skills] Todos los proveedores de IA fallaron. Generando evaluación local de emergencia...');
-      providerUsed = 'Fallback Local';
-      evaluation = {
-        name: repoName,
-        description: `Repositorio ${owner}/${repoName} con ${stars.toLocaleString()} estrellas en GitHub. Evaluación generada localmente porque ningún proveedor de IA estuvo disponible.`,
-        use_case: 'Consulte el README del repositorio para más detalles sobre casos de uso.',
-        example_usage: readmeContent.substring(0, 300) || 'Consulte el repositorio para ejemplos.',
-        category: 'CLI Tools',
-        install_command: `Ver instrucciones en https://github.com/${owner}/${repoName}`,
-        license: repoData.license?.spdx_id || 'No especificada',
-        maintenance_status: 'Activo',
-        risk_level: 'Medio',
-        agent_prompt: `Tienes habilitada la skill ${repoName}. Consulta la documentación oficial en https://github.com/${owner}/${repoName} antes de responder.`,
-        agent_reasoning_trace: [
-          `Paso 1: Verificación de repositorio: ${stars.toLocaleString()} estrellas.`,
-          'Paso 2: Análisis de README: Evaluación automática no disponible (fallback local).',
-          'Paso 3: Clasificación automática: Categoría asignada por defecto.',
-          'Paso 4: Dictamen: Requiere revisión manual (evaluación de emergencia).'
-        ],
-        pros: [`${stars.toLocaleString()} estrellas en GitHub`, `Lenguaje principal: ${language}`],
-        cons: ['Evaluación generada sin IA — requiere revisión manual'],
-        agent_recommendation: 'Este repositorio fue evaluado sin asistencia de IA debido a la indisponibilidad temporal de los proveedores. Se recomienda revisión manual antes de aprobar.',
-        rating: 3,
-        approved: false,
-        reason: 'Evaluación de emergencia (sin IA disponible). Requiere revisión manual.'
-      };
+      console.error('[Store Skills] Todos los proveedores de IA fallaron. No se generará evaluación sintética.');
+      throw new Error('No se pudo conectar con el servicio de IA. Por favor, verifica tu conexión o las variables de entorno e intenta de nuevo.');
     }
 
     console.log(`[Store Skills] Evaluación completada con proveedor: ${providerUsed}`);
