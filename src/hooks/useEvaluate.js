@@ -145,15 +145,8 @@ export function useEvaluate() {
       readmeContent = '(README no disponible)';
     }
 
-    // ── 4. Consultar Groq API (timeout 20s) ──────────────
-    const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!groqApiKey) {
-      throw new Error('La clave VITE_GROQ_API_KEY no está configurada en el archivo .env');
-    }
-
-    console.log('[Store Skills] Consultando a Groq IA...');
-
-    const prompt = `Eres un curador senior, evangelista técnico y auditor de seguridad de herramientas para desarrolladores.
+    // ── 4. Prompt compartido para todos los proveedores de IA ──
+    const aiPrompt = `Eres un curador senior, evangelista técnico y auditor de seguridad de herramientas para desarrolladores.
 Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
 Además, realiza una AUDITORÍA DE SALUD Y SEGURIDAD del repositorio.
 
@@ -212,65 +205,126 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
   "reason": ""
 }`;
 
-    let response;
-    try {
-      response = await fetchWithTimeout(
-        'https://api.groq.com/openai/v1/chat/completions',
+    // ── Helper: Llamar a un proveedor de IA compatible con OpenAI Chat Completions ──
+    const callAIProvider = async (providerName, apiUrl, apiKey, model, timeoutMs) => {
+      console.log(`[Store Skills] Consultando a ${providerName} (${model})...`);
+      const response = await fetchWithTimeout(
+        apiUrl,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${groqApiKey}`
+            'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: model,
             messages: [
-              {
-                role: 'user',
-                content: prompt
-              }
+              { role: 'user', content: aiPrompt }
             ],
             temperature: 0.1,
             response_format: { type: 'json_object' }
           }),
         },
-        20000
+        timeoutMs
       );
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        throw new Error('Groq IA no respondió a tiempo. Intenta de nuevo más tarde.');
+
+      if (!response.ok) {
+        const status = response.status;
+        throw new Error(`${providerName} API respondió con HTTP ${status} ${response.statusText}`);
       }
-      throw new Error(`No se pudo conectar con Groq IA: ${err.message}`);
+
+      const resData = await response.json();
+      const responseText = resData.choices?.[0]?.message?.content || '';
+      console.log(`[Store Skills] ${providerName} respondió correctamente.`);
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`${providerName} no devolvió un JSON válido.`);
+      }
+
+      return JSON.parse(jsonMatch[0]);
+    };
+
+    // ── 5. Cadena de evaluación con fallback: Cerebras → Groq → Demo ──
+    let evaluation = null;
+    let providerUsed = 'ninguno';
+
+    // ── Intento 1: Cerebras API (llama-3.3-70b) ──
+    const cerebrasApiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
+    const cerebrasBaseUrl = import.meta.env.VITE_CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1';
+    const cerebrasModel = import.meta.env.VITE_CEREBRAS_MODEL || 'llama-3.3-70b';
+
+    if (cerebrasApiKey) {
+      try {
+        evaluation = await callAIProvider(
+          'Cerebras',
+          `${cerebrasBaseUrl}/chat/completions`,
+          cerebrasApiKey,
+          cerebrasModel,
+          15000
+        );
+        providerUsed = 'Cerebras';
+      } catch (err) {
+        console.warn(`[Store Skills] Cerebras falló: ${err.message}. Intentando Groq como fallback...`);
+      }
+    } else {
+      console.warn('[Store Skills] VITE_CEREBRAS_API_KEY no configurada. Saltando Cerebras...');
     }
 
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        throw new Error('Cuota de Groq API excedida. Espera unos minutos e intenta de nuevo.');
+    // ── Intento 2: Groq API (llama-3.3-70b-versatile) ──
+    if (!evaluation) {
+      const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
+      if (groqApiKey) {
+        try {
+          evaluation = await callAIProvider(
+            'Groq',
+            'https://api.groq.com/openai/v1/chat/completions',
+            groqApiKey,
+            'llama-3.3-70b-versatile',
+            20000
+          );
+          providerUsed = 'Groq';
+        } catch (err) {
+          console.warn(`[Store Skills] Groq falló: ${err.message}. Intentando fallback local...`);
+        }
+      } else {
+        console.warn('[Store Skills] VITE_GROQ_API_KEY no configurada. Saltando Groq...');
       }
-      if (status === 400 || status === 401) {
-        throw new Error('Solicitud inválida o clave no autorizada a Groq API. Verifica la clave API en .env');
-      }
-      throw new Error(`Error al consultar Groq IA (HTTP ${status}). Intenta de nuevo.`);
     }
 
-    const resData = await response.json();
-    const responseText = resData.choices?.[0]?.message?.content || '';
-    console.log('[Store Skills] Groq respondió correctamente.');
-    
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Gemini no devolvió un JSON válido. Intenta de nuevo.');
-    }
-    
-    let evaluation;
-    try {
-      evaluation = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error('Error al interpretar la respuesta de Gemini. Intenta de nuevo.');
+    // ── Intento 3: Fallback local con catálogo DEMO_SKILLS ──
+    if (!evaluation) {
+      console.warn('[Store Skills] Todos los proveedores de IA fallaron. Generando evaluación local de emergencia...');
+      providerUsed = 'Fallback Local';
+      evaluation = {
+        name: repoName,
+        description: `Repositorio ${owner}/${repoName} con ${stars.toLocaleString()} estrellas en GitHub. Evaluación generada localmente porque ningún proveedor de IA estuvo disponible.`,
+        use_case: 'Consulte el README del repositorio para más detalles sobre casos de uso.',
+        example_usage: readmeContent.substring(0, 300) || 'Consulte el repositorio para ejemplos.',
+        category: 'CLI Tools',
+        install_command: `Ver instrucciones en https://github.com/${owner}/${repoName}`,
+        license: repoData.license?.spdx_id || 'No especificada',
+        maintenance_status: 'Activo',
+        risk_level: 'Medio',
+        agent_prompt: `Tienes habilitada la skill ${repoName}. Consulta la documentación oficial en https://github.com/${owner}/${repoName} antes de responder.`,
+        agent_reasoning_trace: [
+          `Paso 1: Verificación de repositorio: ${stars.toLocaleString()} estrellas.`,
+          'Paso 2: Análisis de README: Evaluación automática no disponible (fallback local).',
+          'Paso 3: Clasificación automática: Categoría asignada por defecto.',
+          'Paso 4: Dictamen: Requiere revisión manual (evaluación de emergencia).'
+        ],
+        pros: [`${stars.toLocaleString()} estrellas en GitHub`, `Lenguaje principal: ${language}`],
+        cons: ['Evaluación generada sin IA — requiere revisión manual'],
+        agent_recommendation: 'Este repositorio fue evaluado sin asistencia de IA debido a la indisponibilidad temporal de los proveedores. Se recomienda revisión manual antes de aprobar.',
+        rating: 3,
+        approved: false,
+        reason: 'Evaluación de emergencia (sin IA disponible). Requiere revisión manual.'
+      };
     }
 
-    // ── 5. Validar rating asignado por la IA ─────────────
+    console.log(`[Store Skills] Evaluación completada con proveedor: ${providerUsed}`);
+
+    // ── 6. Validar rating asignado por la IA ─────────────
     const rating = Number(evaluation.rating) || 0;
     if (rating < 3) {
       return {
@@ -279,7 +333,7 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       };
     }
 
-    // ── 6. Guardar en Supabase ───────────────────────────
+    // ── 7. Guardar en Supabase ───────────────────────────
     const skillData = {
       name: evaluation.name || repoName,
       description: evaluation.description || '',
@@ -307,7 +361,7 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       reason: null,
     };
 
-    // ── 7. Retornar resultado condicionado por estrellas o riesgo (Human-in-the-Loop) ──
+    // ── 8. Retornar resultado condicionado por estrellas o riesgo (Human-in-the-Loop) ──
     if ((stars < 10001 || evaluation.risk_level === 'Alto') && !bypassMinStars) {
       console.log('[Store Skills] Repositorio calificado pero requiere revisión o bloqueo por riesgo.');
       return {
