@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { evaluateSkill } from '../utils/skillService'
 
 export function useEvaluate() {
   // Helper: Envolver un fetch con timeout para evitar cuelgues
@@ -85,205 +86,19 @@ export function useEvaluate() {
       readmeContent = '(README no disponible)';
     }
 
-    // ── 4. Prompt compartido para todos los proveedores de IA ──
-    const aiPrompt = `Eres un curador senior, evangelista técnico y auditor de seguridad de herramientas para desarrolladores.
-Analiza minuciosamente el repositorio de GitHub y su README. Genera un análisis profundo, didáctico y extremadamente práctico para un desarrollador hispanohablante.
-Además, realiza una AUDITORÍA DE SALUD Y SEGURIDAD del repositorio.
-
-DATOS DEL REPOSITORIO:
-- Nombre: ${repoName}
-- Owner: ${owner}
-- Stars: ${stars.toLocaleString()}
-- Forks: ${forks.toLocaleString()}
-- Lenguaje: ${language}
-- Licencia detectada por GitHub: ${repoData.license?.spdx_id || 'No detectada'}
-- Última actualización: ${updatedAt}
-- Fecha ISO última actualización: ${repoData.updated_at || 'Desconocida'}
-- README (primeros 3000 caracteres):
-${readmeContent}
-
-AUDITORÍA DE SEGURIDAD — INSTRUCCIONES:
-1. LICENCIA: Identifica la licencia de código abierto del proyecto (MIT, Apache-2.0, GPL-3.0, BSD, ISC, etc.). Si no se detecta, indica "No especificada".
-2. MANTENIMIENTO: Evalúa si el proyecto está "Activo" (actualizado en los últimos 6 meses), "Mantenimiento" (actualizado entre 6-18 meses) o "Inactivo" (más de 18 meses sin actualización).
-3. RIESGO DE INTEGRACIÓN: Evalúa el nivel de riesgo/complejidad al integrar esta herramienta como "Bajo" (plug & play, pocas dependencias), "Medio" (requiere configuración moderada) o "Alto" (setup complejo, muchas dependencias, breaking changes frecuentes).
-
-REGLAS OBLIGATORIAS DE COHERENCIA EN EVALUACIÓN:
-1. Los elementos incluidos en el array "pros" y en el array "cons" deben ser estrictamente MUTUAMENTE EXCLUYENTES y no pueden contradecirse entre sí.
-2. Si evalúas que el repositorio tiene "comunidad activa" o "mantenimiento regular" en los Pros, queda ESTRICTAMENTE PROHIBIDO mencionar "poca actividad", "mantenimiento deficiente" o "poca comunidad" en los Contras.
-3. Sé preciso, objetivo y coherente en la evaluación de la actividad, comunidad y soporte técnico del repositorio.
-
-INSTRUCCIONES DE RESPUESTA:
-Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
-{
-  "name": "Nombre claro y reconocible de la herramienta",
-  "description": "Explicación detallada, clara y profunda en español sobre qué es exactamente esta herramienta, qué problema resuelve en el desarrollo moderno y sus características o ventajas principales (150 a 250 palabras).",
-  "use_case": "Escenario específico de cuándo usarla, para quién es ideal y qué alternativa o problema ahorra (50 a 100 palabras).",
-  "example_usage": "Ejemplo práctico de código (o comandos explicados) listo para copiar y entender cómo se implementa de forma real en un proyecto.",
-  "category": "una de: Frontend | Backend | DevOps | Data Science | Testing | Database | Security | AI/ML | API & Integration | Mobile | CLI Tools",
-  "install_command": "comando principal de instalación (npm install X, pip install X, etc.)",
-  "license": "Identificador SPDX de la licencia (ej: MIT, Apache-2.0, GPL-3.0) o 'No especificada'",
-  "maintenance_status": "Activo | Mantenimiento | Inactivo",
-  "risk_level": "Bajo | Medio | Alto",
-  "agent_prompt": "Instrucción de Sistema lista para copiar y pegar en un Agente de IA (Claude, ChatGPT, Gemini, Antigravity, etc.). Debe indicar: qué skill tiene habilitada el agente, cuándo debe usarla, qué patrones o APIs emplear, y un ejemplo mínimo de cómo responder. Escríbelo en español, en tono profesional e imperativo, de 2 a 4 oraciones.",
-  "agent_reasoning_trace": [
-    "Paso 1: Validación del repositorio (ej: 'Verificación de repositorio: X estrellas.')",
-    "Paso 2: Análisis del README y tecnología (ej: 'Análisis de README: Documentación completa con soporte TS.')",
-    "Paso 3: Categorización automática (ej: 'Clasificación automática: Categoría Backend.')",
-    "Paso 4: Dictamen final (ej: 'Dictamen: Aprobado sin observaciones.')"
-  ],
-  "pros": [
-    "Punto fuerte 1 (ej: soporte para TypeScript, buena documentación, etc.)",
-    "Punto fuerte 2..."
-  ],
-  "cons": [
-    "Punto a considerar 1 (ej: estrellas por debajo del umbral normal de 10k, poca actividad, etc.)",
-    "Punto a considerar 2..."
-  ],
-  "agent_recommendation": "Recomendación o dictamen cualitativo y detallado redactado por ti sobre si se aconseja integrar la herramienta en proyectos y, si procede, la sugerencia de aprobación manual por excepción (de 2 a 4 oraciones).",
-  "rating": 5,
-  "approved": true,
-  "reason": ""
-}`;
-
-    // ── Helper: Llamar a un proveedor de IA compatible con OpenAI Chat Completions ──
-    const callAIProvider = async (providerName, apiUrl, apiKey, model, timeoutMs) => {
-      console.log(`[Store Skills] Consultando a ${providerName} (${model})...`);
-      const response = await fetchWithTimeout(
-        apiUrl,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [
-              { role: 'user', content: aiPrompt }
-            ],
-            temperature: 0.1,
-            response_format: { type: 'json_object' }
-          }),
-        },
-        timeoutMs
-      );
-
-      if (!response.ok) {
-        const status = response.status;
-        let errorDetail = response.statusText;
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData?.error?.message || errorData?.message || JSON.stringify(errorData);
-        } catch { /* no parseable body */ }
-        throw new Error(`${providerName} API (HTTP ${status}): ${errorDetail}`);
+    // ── 4. Evaluar con Cerebras y guardar en Supabase vía skillService ──
+    return await evaluateSkill(
+      { name: repoName, stars },
+      readmeContent,
+      {
+        bypassMinStars,
+        owner,
+        repoName,
+        language,
+        updatedAt,
+        original_url: `https://github.com/${owner}/${repoName}`
       }
-
-      const resData = await response.json();
-      const responseText = resData.choices?.[0]?.message?.content || '';
-      console.log(`[Store Skills] ${providerName} respondió correctamente.`);
-
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error(`${providerName} no devolvió un JSON válido.`);
-      }
-
-      return JSON.parse(jsonMatch[0]);
-    };
-
-    // ── 5. Evaluación con Cerebras API (proveedor único) ──
-    let evaluation = null;
-
-    const cerebrasApiKey = import.meta.env.VITE_CEREBRAS_API_KEY;
-    const cerebrasModel = import.meta.env.VITE_CEREBRAS_MODEL || 'llama-3.3-70b';
-    const cerebrasEndpoint = 'https://api.cerebras.ai/v1/chat/completions';
-
-    console.log('[Store Skills] Clave Cerebras detectada:', cerebrasApiKey ? 'SÍ' : 'NO');
-
-    if (!cerebrasApiKey) {
-      throw new Error('La clave VITE_CEREBRAS_API_KEY no está configurada. Verifica las variables de entorno.');
-    }
-
-    try {
-      evaluation = await callAIProvider(
-        'Cerebras',
-        cerebrasEndpoint,
-        cerebrasApiKey,
-        cerebrasModel,
-        15000
-      );
-    } catch (err) {
-      console.error(`[Store Skills] Cerebras falló: ${err.message}`);
-      throw new Error(`No se pudo conectar con Cerebras AI: ${err.message}`);
-    }
-
-    console.log('[Store Skills] Evaluación completada con Cerebras.');
-
-    // ── 6. Validar rating asignado por la IA ─────────────
-    const rating = Number(evaluation.rating) || 0;
-    if (rating < 3) {
-      return {
-        approved: false,
-        reason: `Rechazado por la IA: Rating ${rating}/5 (mínimo requerido: 3/5). ${evaluation.reason || ''}`,
-      };
-    }
-
-    // ── 7. Guardar en Supabase ───────────────────────────
-    const skillData = {
-      name: evaluation.name || repoName,
-      description: evaluation.description || '',
-      use_case: evaluation.use_case || '',
-      example_usage: evaluation.example_usage || '',
-      category: evaluation.category || 'Otros',
-      install_command: evaluation.install_command || '',
-      license: evaluation.license || repoData.license?.spdx_id || 'No especificada',
-      maintenance_status: evaluation.maintenance_status || 'Activo',
-      risk_level: evaluation.risk_level || 'Medio',
-      agent_prompt: evaluation.agent_prompt || '',
-      agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
-      pros: evaluation.pros || [],
-      cons: evaluation.cons || [],
-      agent_recommendation: evaluation.agent_recommendation || '',
-      is_exception: bypassMinStars,
-      language: language,
-      stars: stars,
-      rating: rating,
-      original_url: `https://github.com/${owner}/${repoName}`,
-      repo_owner: owner,
-      repo_name: repoName,
-      last_updated: updatedAt,
-      approved: (stars >= 10001 && evaluation.risk_level !== 'Alto') || bypassMinStars,
-      reason: null,
-    };
-
-    // ── 8. Retornar resultado condicionado por estrellas o riesgo (Human-in-the-Loop) ──
-    if ((stars < 10001 || evaluation.risk_level === 'Alto') && !bypassMinStars) {
-      console.log('[Store Skills] Repositorio calificado pero requiere revisión o bloqueo por riesgo.');
-      return {
-        approved: false,
-        requires_human_review: true,
-        skill: { ...skillData, id: `temp-${Date.now()}` },
-      };
-    }
-
-    const { data: savedSkill, error: saveError } = await supabase
-      .from('skills')
-      .upsert(skillData, { onConflict: 'original_url' })
-      .select()
-      .single();
-
-    if (saveError) {
-      console.warn('[Store Skills] No se pudo guardar en Supabase, devolviendo datos locales:', saveError.message);
-      return {
-        approved: true,
-        skill: { ...skillData, id: `loc-${Date.now()}` },
-      };
-    }
-
-    console.log('[Store Skills] Skill guardada exitosamente:', savedSkill.name);
-    return {
-      approved: true,
-      skill: savedSkill,
-    };
+    );
   }
 
   const saveException = async (skillData) => {
