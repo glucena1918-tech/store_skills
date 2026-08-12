@@ -7,6 +7,16 @@ const ensureArray = (val) => {
   return [];
 };
 
+// Helper para asegurar que rating sea un número entero entre 1 y 5
+const formatRating = (val) => {
+  if (typeof val === 'string') val = val.replace(',', '.');
+  let num = parseFloat(val);
+  if (isNaN(num)) return 5;
+  // Si la IA devuelve un valor sobre 10 (ej. 9.5), escalarlo a base 5 (4.75 -> 5)
+  if (num > 5) num = num / 2;
+  return Math.min(5, Math.max(1, Math.round(num)));
+};
+
 // Función para extraer solo el objeto JSON entre llaves { ... }
 const extractJson = (text) => {
   const match = text.match(/\{[\s\S]*\}/);
@@ -37,6 +47,8 @@ REGLA DE IDIOMA Y ESTRUCTURA OBLIGATORIA:
   "Paso 3: Clasificación automática: Categoría [Categoría asignada].",
   "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) - Bajo el umbral / Bloqueado por Riesgo Alto]"
 ]
+
+3. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
 
 QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN INGLÉS.`;
 
@@ -87,8 +99,8 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
   // 1. Evaluar llamando a OpenRouter API (Llama 3.3 70B Free)
   const evaluation = await evaluateWithOpenRouter(repoMetadata, readmeText);
 
-  // 2. Validar rating asignado por la IA
-  const rating = Number(evaluation.rating) || 0;
+  // 2. Validar rating asignado por la IA (redondeado a entero entre 1 y 5)
+  const rating = formatRating(evaluation.rating);
   if (rating < 3) {
     return {
       approved: false,

@@ -133,6 +133,7 @@ REGLAS OBLIGATORIAS DE COHERENCIA EN EVALUACIÓN:
 1. Los elementos incluidos en el array "pros" y en el array "cons" deben ser estrictamente MUTUAMENTE EXCLUYENTES y no pueden contradecirse entre sí.
 2. Si evalúas que el repositorio tiene "comunidad activa" o "mantenimiento regular" en los Pros, queda ESTRICTAMENTE PROHIBIDO mencionar "poca actividad", "mantenimiento deficiente" o "poca comunidad" en los Contras.
 3. Sé preciso, objetivo y coherente en la evaluación de la actividad, comunidad y soporte técnico del repositorio.
+4. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
 
 INSTRUCCIONES DE RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
@@ -207,8 +208,17 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       throw new Error("La IA no retornó un JSON válido");
     }
 
+    // Helper para asegurar que rating sea un número entero entre 1 y 5
+    const formatRating = (val: any) => {
+      if (typeof val === "string") val = val.replace(",", ".");
+      let num = parseFloat(val);
+      if (isNaN(num)) return 5;
+      if (num > 5) num = num / 2;
+      return Math.min(5, Math.max(1, Math.round(num)));
+    };
+
     // ── 6. Verify AI rating ──────────────────────────────────
-    const rating = Number(evaluation.rating) || 0;
+    const rating = formatRating(evaluation.rating);
     if (rating < 3) {
       return new Response(
         JSON.stringify({

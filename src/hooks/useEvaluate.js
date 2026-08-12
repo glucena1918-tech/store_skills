@@ -102,8 +102,17 @@ export function useEvaluate() {
 
   const saveException = async (skillData) => {
     console.log('[Store Skills] Guardando excepción para:', skillData.name);
+    const formatRating = (val) => {
+      if (typeof val === 'string') val = val.replace(',', '.');
+      let num = parseFloat(val);
+      if (isNaN(num)) return 5;
+      if (num > 5) num = num / 2;
+      return Math.min(5, Math.max(1, Math.round(num)));
+    };
+
     const dataToSave = {
       ...skillData,
+      rating: formatRating(skillData.rating),
       approved: true,
       is_exception: true,
       // Ensure all AI-generated fields are persisted
