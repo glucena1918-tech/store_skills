@@ -26,6 +26,64 @@ const extractJson = (text) => {
   throw new Error("No se encontró un bloque JSON válido en la respuesta de la IA.");
 };
 
+export const evaluateWithOpenAI = async (repoMetadata, readmeText) => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("La variable VITE_OPENAI_API_KEY no está configurada.");
+  }
+
+  const systemPrompt = `REGLAS OBLIGATORIAS:
+1. Responde ÚNICAMENTE con un objeto JSON válido.
+2. Redacta TODO el contenido estrictamente en ESPAÑOL.
+3. El campo "rating" DEBE SER UN NÚMERO ENTERO DEL 1 AL 5 (sin decimales).
+4. El campo "agent_reasoning_trace" DEBE SER UN ARRAY DE EXACTAMENTE 4 ELEMENTOS EN ESPAÑOL:
+   - "Paso 1: Verificación de repositorio: [X] estrellas en GitHub."
+   - "Paso 2: Análisis de README: [Resumen en español]."
+   - "Paso 3: Clasificación automática: Categoría [Categoría]."
+   - "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) / Bloqueado por Riesgo Alto]"
+
+Eres un curador de Skills de IA para desarrolladores hispanohablantes.`;
+
+  const userPrompt = `Analiza este repositorio:
+Nombre: ${repoMetadata.name}
+Estrellas: ${repoMetadata.stars}
+README: ${readmeText.slice(0, 3000)}`;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Error OpenAI API (${response.status}): ${errorData.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  const parsedData = JSON.parse(data.choices[0].message.content);
+
+  // Sanitización de seguridad para rating
+  let cleanRating = parseInt(parsedData.rating, 10);
+  if (isNaN(cleanRating)) cleanRating = 5;
+  if (cleanRating > 5) cleanRating = Math.round(cleanRating / 2);
+  parsedData.rating = Math.min(5, Math.max(1, cleanRating));
+
+  return parsedData;
+};
+
 export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
@@ -96,8 +154,8 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     original_url = `https://github.com/${owner}/${repoName}`
   } = options;
 
-  // 1. Evaluar llamando a OpenRouter API (Llama 3.3 70B Free)
-  const evaluation = await evaluateWithOpenRouter(repoMetadata, readmeText);
+  // 1. Evaluar llamando a OpenAI API (gpt-4o-mini)
+  const evaluation = await evaluateWithOpenAI(repoMetadata, readmeText);
 
   // 2. Validar rating asignado por la IA (redondeado a entero entre 1 y 5)
   const rating = formatRating(evaluation.rating);
