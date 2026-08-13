@@ -48,7 +48,7 @@ Eres un curador de Skills de IA para desarrolladores hispanohablantes.`;
   const userPrompt = `Analiza este repositorio:
 Nombre: ${repoMetadata.name}
 Estrellas: ${repoMetadata.stars}
-README: ${readmeText.slice(0, 3000)}`;
+README: ${readmeText.slice(0, 8000)}`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -57,7 +57,7 @@ README: ${readmeText.slice(0, 3000)}`;
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -113,7 +113,7 @@ QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN
   const userPrompt = `Analiza este repositorio:
 Nombre: ${repoMetadata.name}
 Estrellas: ${repoMetadata.stars}
-README: ${readmeText.slice(0, 3000)}`;
+README: ${readmeText.slice(0, 8000)}`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -154,7 +154,7 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     original_url = `https://github.com/${owner}/${repoName}`
   } = options;
 
-  // 1. Evaluar llamando a OpenAI API (gpt-4o-mini)
+  // 1. Evaluar llamando a OpenAI API (gpt-4o)
   const evaluation = await evaluateWithOpenAI(repoMetadata, readmeText);
 
   // 2. Validar rating asignado por la IA (redondeado a entero entre 1 y 5)
@@ -169,28 +169,28 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
   // 3. Estructurar skillData
   const stars = repoMetadata.stars || 0;
   const skillData = {
-    name: evaluation.name || repoName,
-    description: evaluation.description || '',
-    use_case: evaluation.use_case || '',
-    example_usage: evaluation.example_usage || '',
-    category: evaluation.category || 'Otros',
-    install_command: evaluation.install_command || '',
-    license: evaluation.license || 'No especificada',
-    maintenance_status: evaluation.maintenance_status || 'Activo',
-    risk_level: evaluation.risk_level || 'Medio',
-    agent_prompt: evaluation.agent_prompt || '',
-    agent_reasoning_trace: ensureArray(evaluation.agent_reasoning_trace),
-    pros: ensureArray(evaluation.pros),
-    cons: ensureArray(evaluation.cons),
-    agent_recommendation: evaluation.agent_recommendation || '',
-    is_exception: bypassMinStars,
-    language: language,
-    stars: stars,
-    rating: rating,
     original_url: original_url,
     repo_owner: owner,
     repo_name: repoName,
+    name: evaluation.name || repoName,
+    description: evaluation.description || repoMetadata.description || "Colección de habilidades para Agentes de IA.",
+    use_case: evaluation.use_case || "Optimizar la ingeniería de software con agentes de IA.",
+    example_usage: evaluation.example_usage || "claude plugins install mattpocock-skills",
+    install_command: evaluation.install_command || "claude plugins install mattpocock-skills",
+    agent_prompt: evaluation.agent_prompt || "Actúa como un experto en habilidades de ingeniería de IA.",
+    agent_recommendation: evaluation.agent_recommendation || '',
+    category: evaluation.category || "Herramientas de Desarrollo",
+    language: language || repoMetadata.language || "Markdown / Docs",
+    license: evaluation.license || "MIT",
+    maintenance_status: evaluation.maintenance_status || "Activo",
+    risk_level: evaluation.risk_level || "Bajo",
+    rating: rating,
+    stars: stars,
     last_updated: updatedAt,
+    is_exception: bypassMinStars,
+    agent_reasoning_trace: ensureArray(evaluation.agent_reasoning_trace),
+    pros: ensureArray(evaluation.pros),
+    cons: ensureArray(evaluation.cons),
     approved: (stars >= 10001 && evaluation.risk_level !== 'Alto') || bypassMinStars,
     reason: null,
   };

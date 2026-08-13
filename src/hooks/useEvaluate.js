@@ -79,7 +79,7 @@ export function useEvaluate() {
       );
       if (readmeRes.ok) {
         readmeContent = await readmeRes.text();
-        readmeContent = readmeContent.substring(0, 3000);
+        readmeContent = readmeContent.substring(0, 8000);
       }
     } catch {
       readmeContent = '(README no disponible)';
