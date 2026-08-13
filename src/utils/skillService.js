@@ -213,8 +213,20 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     };
   }
 
-  // 3. Estructurar skillData
+  // 3. Estructurar skillData (Mapeo dinámico y seguro sin textos quemados)
   const stars = repoMetadata.stars || 0;
+  const targetRepoName = evaluation.name || repoMetadata.name || repoName || "skill";
+  const repoLang = (language || repoMetadata.language || evaluation.language || "").toLowerCase();
+
+  // Determinar comando de instalación dinámico según el lenguaje si la IA no lo entrega:
+  let defaultInstall = `git clone ${cleanUrl}`;
+  if (repoLang.includes("python")) defaultInstall = `pip install ${targetRepoName.toLowerCase()}`;
+  else if (repoLang.includes("javascript") || repoLang.includes("typescript")) defaultInstall = `npm install ${targetRepoName.toLowerCase()}`;
+
+  const installCommand = evaluation.install_command || evaluation.installCommand || defaultInstall;
+  const exampleUsage = evaluation.example_usage || evaluation.exampleUsage || evaluation.example_code || installCommand;
+  const useCase = evaluation.use_case || evaluation.useCase || `Desarrollo e integración avanzada con ${targetRepoName}.`;
+  const agentPrompt = evaluation.agent_prompt || evaluation.agentPrompt || `Actúa como un experto en ${targetRepoName} y asiste en su configuración e integración técnica.`;
 
   const rawPros = ensureArray(evaluation.pros);
   const safePros = rawPros.length >= 2
@@ -231,15 +243,15 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
       : ["Comunidad de contribuidores reducida", `Popularidad por debajo del umbral estándar (${stars} / 10.001 estrellas)`];
 
   const skillData = {
-    original_url: original_url,
+    original_url: cleanUrl,
     repo_owner: owner,
     repo_name: repoName,
-    name: evaluation.name || repoName,
-    description: evaluation.description || repoMetadata.description || "Colección de habilidades para Agentes de IA.",
-    use_case: evaluation.use_case || "Optimizar la ingeniería de software con agentes de IA.",
-    example_usage: evaluation.example_usage || "claude plugins install mattpocock-skills",
-    install_command: evaluation.install_command || "claude plugins install mattpocock-skills",
-    agent_prompt: evaluation.agent_prompt || "Actúa como un experto en habilidades de ingeniería de IA.",
+    name: targetRepoName,
+    description: evaluation.description || repoMetadata.description || `Herramienta de desarrollo para ${targetRepoName}.`,
+    use_case: useCase,
+    example_usage: exampleUsage,
+    install_command: installCommand,
+    agent_prompt: agentPrompt,
     agent_recommendation: evaluation.agent_recommendation || '',
     category: evaluation.category || "Herramientas de Desarrollo",
     language: language || repoMetadata.language || "Markdown / Docs",
