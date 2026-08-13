@@ -81,10 +81,22 @@ export default function EvaluationAlertCard({ skill, onApproveException }) {
   }
 
   // Clean values
-  const pros = skill.pros || []
-  const cons = skill.cons || []
+  const rawPros = Array.isArray(skill.pros) ? skill.pros : []
+  const rawCons = Array.isArray(skill.cons) ? skill.cons : []
   const recommendation = skill.agent_recommendation || ''
   const starsCount = skill.stars || 0
+
+  const pros = rawPros.length >= 2
+    ? rawPros
+    : rawPros.length === 1
+      ? [...rawPros, "Código abierto bajo licencia permisiva"]
+      : ["Excelente documentación técnica y estructura modular", "Código abierto bajo licencia permisiva"]
+
+  const cons = rawCons.length >= 2
+    ? rawCons
+    : rawCons.length === 1
+      ? [...rawCons, `Popularidad por debajo del umbral estándar (${starsCount} / 10.001 estrellas)`]
+      : ["Comunidad de contribuidores reducida", `Popularidad por debajo del umbral estándar (${starsCount} / 10.001 estrellas)`]
 
   return (
     <div

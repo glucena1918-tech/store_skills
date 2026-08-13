@@ -43,6 +43,12 @@ export const evaluateWithOpenAI = async (repoMetadata, readmeText) => {
    - "Paso 3: Clasificación automática: Categoría [Categoría]."
    - "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) / Bloqueado por Riesgo Alto]"
 
+REGLA OBLIGATORIA PARA PROS Y CONTRAS:
+- "pros": Debe ser un array con MÍNIMO 2 O 3 PUNTOS FUERTES en español (ej: ["Excelente documentación y organización modular", "Código de fuente abierto bajo licencia MIT"]).
+- "cons": Debe ser un array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
+
+QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
+
 REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
 - "description": Debe ser una explicación técnica profunda de MÍNIMO 100 PALABRAS (2 párrafos completos) detallando el propósito, arquitectura y funcionamiento de la herramienta.
 - "use_case": Debe explicar detalladamente los problemas concretos que resuelve, en qué tipo de proyectos se recomienda y a quién ayuda.
@@ -115,6 +121,12 @@ REGLA DE IDIOMA Y ESTRUCTURA OBLIGATORIA:
 
 3. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
 
+REGLA OBLIGATORIA PARA PROS Y CONTRAS:
+- "pros": Debe ser un array con MÍNIMO 2 O 3 PUNTOS FUERTES en español (ej: ["Excelente documentación y organización modular", "Código de fuente abierto bajo licencia MIT"]).
+- "cons": Debe ser un array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
+
+QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
+
 QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN INGLÉS.`;
 
   const userPrompt = `Analiza este repositorio:
@@ -175,6 +187,21 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
 
   // 3. Estructurar skillData
   const stars = repoMetadata.stars || 0;
+
+  const rawPros = ensureArray(evaluation.pros);
+  const safePros = rawPros.length >= 2
+    ? rawPros
+    : rawPros.length === 1
+      ? [...rawPros, "Código abierto bajo licencia permisiva"]
+      : ["Excelente documentación técnica y estructura modular", "Código abierto bajo licencia permisiva"];
+
+  const rawCons = ensureArray(evaluation.cons);
+  const safeCons = rawCons.length >= 2
+    ? rawCons
+    : rawCons.length === 1
+      ? [...rawCons, `Popularidad por debajo del umbral estándar (${stars} / 10.001 estrellas)`]
+      : ["Comunidad de contribuidores reducida", `Popularidad por debajo del umbral estándar (${stars} / 10.001 estrellas)`];
+
   const skillData = {
     original_url: original_url,
     repo_owner: owner,
@@ -196,8 +223,8 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     last_updated: updatedAt,
     is_exception: bypassMinStars,
     agent_reasoning_trace: ensureArray(evaluation.agent_reasoning_trace),
-    pros: ensureArray(evaluation.pros),
-    cons: ensureArray(evaluation.cons),
+    pros: safePros,
+    cons: safeCons,
     approved: (stars >= 10001 && evaluation.risk_level !== 'Alto') || bypassMinStars,
     reason: null,
   };

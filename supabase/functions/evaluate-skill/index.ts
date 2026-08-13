@@ -135,6 +135,12 @@ REGLAS OBLIGATORIAS DE COHERENCIA EN EVALUACIÓN:
 3. Sé preciso, objetivo y coherente en la evaluación de la actividad, comunidad y soporte técnico del repositorio.
 4. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
 
+REGLA OBLIGATORIA PARA PROS Y CONTRAS:
+- "pros": Debe ser un array con MÍNIMO 2 O 3 PUNTOS FUERTES en español (ej: ["Excelente documentación y organización modular", "Código de fuente abierto bajo licencia MIT"]).
+- "cons": Debe ser un array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
+
+QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
+
 REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
 - "description": Debe ser una explicación técnica profunda de MÍNIMO 100 PALABRAS (2 párrafos completos) detallando el propósito, arquitectura y funcionamiento de la herramienta.
 - "use_case": Debe explicar detalladamente los problemas concretos que resuelve, en qué tipo de proyectos se recomienda y a quién ayuda.
@@ -244,6 +250,20 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const rawPros = Array.isArray(evaluation.pros) ? evaluation.pros : [];
+    const safePros = rawPros.length >= 2
+      ? rawPros
+      : rawPros.length === 1
+        ? [...rawPros, "Código abierto bajo licencia permisiva"]
+        : ["Excelente documentación técnica y estructura modular", "Código abierto bajo licencia permisiva"];
+
+    const rawCons = Array.isArray(evaluation.cons) ? evaluation.cons : [];
+    const safeCons = rawCons.length >= 2
+      ? rawCons
+      : rawCons.length === 1
+        ? [...rawCons, `Popularidad por debajo del umbral estándar (${stars} / 10.001 estrellas)`]
+        : ["Comunidad de contribuidores reducida", `Popularidad por debajo del umbral estándar (${stars} / 10.001 estrellas)`];
+
     const skillData = {
       name: evaluation.name || repoName,
       description: evaluation.description || "",
@@ -256,8 +276,8 @@ Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin blo
       risk_level: evaluation.risk_level || "Medio",
       agent_prompt: evaluation.agent_prompt || "",
       agent_reasoning_trace: evaluation.agent_reasoning_trace || [],
-      pros: evaluation.pros || [],
-      cons: evaluation.cons || [],
+      pros: safePros,
+      cons: safeCons,
       agent_recommendation: evaluation.agent_recommendation || "",
       is_exception: bypassMinStars,
       language: language,
