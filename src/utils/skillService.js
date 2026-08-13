@@ -43,6 +43,13 @@ export const evaluateWithOpenAI = async (repoMetadata, readmeText) => {
    - "Paso 3: Clasificación automática: Categoría [Categoría]."
    - "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) / Bloqueado por Riesgo Alto]"
 
+REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
+- "description": Debe ser una explicación técnica profunda de MÍNIMO 100 PALABRAS (2 párrafos completos) detallando el propósito, arquitectura y funcionamiento de la herramienta.
+- "use_case": Debe explicar detalladamente los problemas concretos que resuelve, en qué tipo de proyectos se recomienda y a quién ayuda.
+- "agent_prompt": Debe ser un prompt de sistema completo de 3 a 5 oraciones, detallando el rol, comportamiento esperado y ejemplo de respuesta para el Agente de IA.
+
+QUEDA ESTRICTAMENTE PROHIBIDO DEVOLVER FRASES DE UNA SOLA LÍNEA O DESCRIPCIONES GENÉRICAS CORTAS.
+
 Eres un curador de Skills de IA para desarrolladores hispanohablantes.`;
 
   const userPrompt = `Analiza este repositorio:

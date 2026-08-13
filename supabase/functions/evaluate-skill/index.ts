@@ -135,6 +135,13 @@ REGLAS OBLIGATORIAS DE COHERENCIA EN EVALUACIÓN:
 3. Sé preciso, objetivo y coherente en la evaluación de la actividad, comunidad y soporte técnico del repositorio.
 4. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
 
+REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
+- "description": Debe ser una explicación técnica profunda de MÍNIMO 100 PALABRAS (2 párrafos completos) detallando el propósito, arquitectura y funcionamiento de la herramienta.
+- "use_case": Debe explicar detalladamente los problemas concretos que resuelve, en qué tipo de proyectos se recomienda y a quién ayuda.
+- "agent_prompt": Debe ser un prompt de sistema completo de 3 a 5 oraciones, detallando el rol, comportamiento esperado y ejemplo de respuesta para el Agente de IA.
+
+QUEDA ESTRICTAMENTE PROHIBIDO DEVOLVER FRASES DE UNA SOLA LÍNEA O DESCRIPCIONES GENÉRICAS CORTAS.
+
 INSTRUCCIONES DE RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON válido (sin etiquetas markdown, sin bloque de código markdown, ni texto extra):
 {

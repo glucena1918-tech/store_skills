@@ -207,35 +207,24 @@ export default function SkillModal({ skill, onClose, onDelete, onReevaluate, onU
 
                 {/* Collapsible Trace Content */}
                 <div style={{
-                  maxHeight: showTrace ? '300px' : '0px',
-                  overflow: 'hidden',
+                  maxHeight: showTrace ? '600px' : '0px',
+                  overflow: showTrace ? 'visible' : 'hidden',
                   transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin 0.3s ease',
                   opacity: showTrace ? 1 : 0,
                   marginTop: showTrace ? '10px' : '0px',
-                  background: 'var(--color-bg-secondary)',
-                  borderRadius: '12px',
-                  border: showTrace ? '1px solid var(--color-border)' : '1px solid transparent',
-                  padding: showTrace ? '14px 18px' : '0px 18px',
                 }}>
-                  <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {skill.agent_reasoning_trace.map((step, idx) => {
-                      // Override dictamen for exception skills
+                  {/* Contenedor del dictamen con scroll vertical interno */}
+                  <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-4 mt-3 max-h-56 overflow-y-auto space-y-2 text-sm text-gray-700">
+                    {skill.agent_reasoning_trace?.map((step, idx) => {
                       const isLastStep = idx === skill.agent_reasoning_trace.length - 1;
                       const displayStep = (isLastStep && skill.is_exception && step.toLowerCase().includes('dictamen'))
                         ? 'Paso 4: Dictamen: Aprobado por Excepción Humana (Human-in-the-Loop) — Bajo el umbral estándar de estrellas.'
                         : step;
                       return (
-                        <li key={`trace-${idx}`} style={{
-                          fontSize: '13px',
-                          color: 'var(--color-text-secondary)',
-                          lineHeight: 1.5,
-                          fontWeight: 500,
-                        }}>
-                          {displayStep}
-                        </li>
+                        <p key={idx} className="leading-relaxed">{displayStep}</p>
                       );
                     })}
-                  </ul>
+                  </div>
                 </div>
               </div>
             )}
