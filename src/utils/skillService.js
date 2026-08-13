@@ -52,7 +52,11 @@ QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
 REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
 - "description": Debe ser una explicación técnica profunda de MÍNIMO 100 PALABRAS (2 párrafos completos) detallando el propósito, arquitectura y funcionamiento de la herramienta.
 - "use_case": Debe explicar detalladamente los problemas concretos que resuelve, en qué tipo de proyectos se recomienda y a quién ayuda.
-- "agent_prompt": Debe ser un prompt de sistema completo de 3 a 5 oraciones, detallando el rol, comportamiento esperado y ejemplo de respuesta para el Agente de IA.
+
+REGLA ESTRICTA PARA "agent_prompt":
+El campo "agent_prompt" debe ser una Instrucción de Sistema (System Prompt) lista para copiar, donde se le indique a un Agente de IA (como Claude, Cursor o ChatGPT) cómo actuar como un experto en la herramienta analizada.
+- FORMATO OBLIGATORIO: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
+- QUEDA ESTRICTAMENTE PROHIBIDO que el "agent_prompt" mencione frases como: "Eres un curador de repositorios", "Tu tarea es analizar GitHub" o "Evalúa la popularidad". Debe ser 100% enfocado en PROGRAMAR e IMPLEMENTAR la herramienta.
 
 QUEDA ESTRICTAMENTE PROHIBIDO DEVOLVER FRASES DE UNA SOLA LÍNEA O DESCRIPCIONES GENÉRICAS CORTAS.
 
@@ -126,6 +130,11 @@ REGLA OBLIGATORIA PARA PROS Y CONTRAS:
 - "cons": Debe ser un array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
 
 QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
+
+REGLA ESTRICTA PARA "agent_prompt":
+El campo "agent_prompt" debe ser una Instrucción de Sistema (System Prompt) lista para copiar, donde se le indique a un Agente de IA (como Claude, Cursor o ChatGPT) cómo actuar como un experto en la herramienta analizada.
+- FORMATO OBLIGATORIO: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
+- QUEDA ESTRICTAMENTE PROHIBIDO que el "agent_prompt" mencione frases como: "Eres un curador de repositorios", "Tu tarea es analizar GitHub" o "Evalúa la popularidad". Debe ser 100% enfocado en PROGRAMAR e IMPLEMENTAR la herramienta.
 
 QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN INGLÉS.`;
 
