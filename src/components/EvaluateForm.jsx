@@ -297,9 +297,9 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
           {/* Result Panel */}
           {result && (
             <div style={{ marginTop: '20px' }}>
-              {result.requires_human_review ? (
+              {result.requires_human_review || result.risk_level === 'Alto' || result.skill?.risk_level === 'Alto' ? (
                 <EvaluationAlertCard
-                  skill={result.skill}
+                  skill={result.skill || result}
                   onApproveException={async (skillData) => {
                     if (onApproveException) {
                       try {

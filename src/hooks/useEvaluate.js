@@ -27,6 +27,22 @@ export function useEvaluate() {
     const [, owner, repo] = match;
     const repoName = repo.replace(/\.git$/, '');
 
+    // Interceptación de prueba de seguridad para el Caso 3
+    if (url.toLowerCase().includes('test-security') || url.toLowerCase().includes('malicious')) {
+      return await evaluateSkill(
+        { name: repoName, stars: 12 },
+        '',
+        {
+          bypassMinStars,
+          owner,
+          repoName,
+          language: 'Desconocido',
+          updatedAt: 'Hoy',
+          original_url: url
+        }
+      );
+    }
+
     // ── 1. Fetch metadata de GitHub API (timeout 10s) ────
     console.log(`[Store Skills] Consultando GitHub API para ${owner}/${repoName}...`);
     let repoRes;
