@@ -148,6 +148,7 @@ REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
 
 REGLA ESTRICTA PARA "agent_prompt":
 El campo "agent_prompt" debe ser una Instrucción de Sistema (System Prompt) lista para copiar, donde se le indique a un Agente de IA (como Claude, Cursor o ChatGPT) cómo actuar como un experto en la herramienta analizada.
+- EJEMPLO DE REFERENCIA: "Instrucción del Sistema: Tienes habilitada la skill Tailwind CSS. Cuando el usuario solicite estilos, diseño responsivo o componentes visuales, utiliza exclusivamente clases de utilidad de Tailwind CSS directamente en el markup. Evita escribir CSS personalizado salvo que Tailwind no cubra el caso específico."
 - FORMATO OBLIGATORIO: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
 - QUEDA ESTRICTAMENTE PROHIBIDO que el "agent_prompt" mencione frases como: "Eres un curador de repositorios", "Tu tarea es analizar GitHub" o "Evalúa la popularidad". Debe ser 100% enfocado en PROGRAMAR e IMPLEMENTAR la herramienta.
 
