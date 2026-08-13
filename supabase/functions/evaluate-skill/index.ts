@@ -1,5 +1,5 @@
+// @ts-nocheck
 // Supabase Edge Function: evaluate-skill
-/// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
 // Evalúa un repositorio de GitHub usando Gemini AI
 // Deploy: supabase functions deploy evaluate-skill
 // O: pegar directamente en el Dashboard de Supabase > Edge Functions
