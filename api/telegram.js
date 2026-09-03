@@ -100,20 +100,19 @@ export default async function handler(req, res) {
     if (lower === "start" || lower === "/start" || lower === "ayuda" || lower === "/ayuda" || lower === "help" || lower === "/help") {
       const helpMsg = 
         "🤖 *CENTRO DE MANDO JARVIS CLOUD 24/7*\n\n" +
-        "Puedes dictar o escribir tus pendientes en cualquier momento:\n\n" +
-        "• `Tarea: [texto]` — Añadir tarea a tus Objetivos del Día\n" +
-        "• `Nota: [texto]` — Guardar nota en Inbox y Bitácora\n" +
-        "• `Agenda: [texto]` o `Evento: [texto]` — Agendar cita/reunión\n" +
-        "• `Memo: [Destinatario] | [Asunto] | [Cuerpo]` — Redactar Memo CUSPAL\n" +
-        "• `Oficio: [Destinatario] | [Cargo] | [Cuerpo]` — Redactar Oficio CUSPAL\n" +
+        "Captura ubicua para tu Segundo Cerebro (Obsidian):\n\n" +
+        "• `Tarea: [texto]` — Añadir a Objetivos de la Jornada (Bitácora)\n" +
+        "• `Nota: [texto]` — Guardar nota rápida en Inbox.md\n" +
+        "• `Agenda: [texto]` o `Evento: [texto]` — Registrar cita en Bitácora y Calendar\n" +
+        "• `Borrador: [Asunto], [Mensaje]` — Preparar borrador en Gmail\n" +
         "• `Status` — Diagnóstico del nodo en la nube\n" +
-        "• Cualquier otro texto se guardará automáticamente en tu Inbox.\n\n" +
-        "_Todo queda respaldado en Supabase y se sincronizará a tu Obsidian cuando actives tu laptop._";
+        "• Cualquier texto libre — Se deposita en tu Inbox.md\n\n" +
+        "_Todo queda asegurado en Supabase y se inyecta a tu Bóveda local al activar tu laptop._";
       await sendTelegramMessage(chatId, helpMsg);
       return res.status(200).json({ ok: true, handled: "help" });
     }
 
-    // 3. Identificación y Clasificación de Transacciones
+    // 3. Identificación y Clasificación de Transacciones (Obsidian / Workspace)
     let type = "inbox";
     let cleanContent = text;
     let replyHeader = "📝 *Captura Guardada en la Nube:*";
@@ -141,19 +140,13 @@ export default async function handler(req, res) {
       type = "event";
       cleanContent = getBody(text, "(agenda|evento|reunion)");
       replyHeader = "📅 *Evento Asegurado en la Nube:*";
-      targetSection = "Bitácora Diaria (Actividades & Reuniones)";
-    } else if (lower.startsWith("memo:") || lower.startsWith("/memo") || lower.startsWith("memo ")) {
-      type = "memo";
-      cleanContent = getBody(text, "memo");
-      replyHeader = "📄 *Memo CUSPAL Recibido en la Nube:*";
-      targetSection = "Generador de Memos CUSPAL (Word .DOCX)";
-      customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
-    } else if (lower.startsWith("oficio:") || lower.startsWith("/oficio") || lower.startsWith("oficio ")) {
-      type = "oficio";
-      cleanContent = getBody(text, "oficio");
-      replyHeader = "📄 *Oficio CUSPAL Recibido en la Nube:*";
-      targetSection = "Generador de Oficios CUSPAL (Word .DOCX)";
-      customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
+      targetSection = "Bitácora Diaria (Actividades) y Google Calendar";
+    } else if (lower.startsWith("borrador:") || lower.startsWith("/borrador") || lower.startsWith("draft:")) {
+      type = "draft";
+      cleanContent = getBody(text, "(borrador|draft)");
+      replyHeader = "📧 *Borrador Asegurado en la Nube:*";
+      targetSection = "Gmail (Se creará borrador al activar laptop)";
+      customNotice = "Se preparará el borrador en tu cuenta de Gmail al iniciar tu laptop.";
     }
 
     const timestamp = new Date().toISOString();
