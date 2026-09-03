@@ -19,7 +19,6 @@ async function sendTelegramMessage(chatId, text) {
       })
     });
     if (!res.ok) {
-      // Fallback sin Markdown si falla por caracteres especiales
       await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,7 +53,6 @@ async function uploadToSupabaseBuffer(filename, data) {
 }
 
 export default async function handler(req, res) {
-  // Manejo de peticiones GET para verificación de estado
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
@@ -74,7 +72,6 @@ export default async function handler(req, res) {
     const text = (msg.text || "").trim();
     const msgId = msg.message_id;
 
-    // Validación de seguridad de usuario
     if (chatId !== ALLOWED_CHAT_ID) {
       console.warn(`Intento no autorizado de chat_id: ${chatId}`);
       return res.status(200).json({ ok: true, ignored: "unauthorized" });
@@ -90,10 +87,10 @@ export default async function handler(req, res) {
     if (lower === "status" || lower === "/status" || lower === "estado" || lower === "/estado") {
       const statusMsg = 
         "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
-        "🌐 *Modo:* Nube Autónoma (Sin depender de laptop)\n" +
+        "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
         "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
         "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
-        "💻 *Sincronización Local:* Al encender tu laptop, los pendientes se transferirán automáticamente a tu Bóveda de Obsidian.\n\n" +
+        "💻 *Sincronización Local:* Al encender tu laptop, todos los pendientes se transfieren automáticamente a tu Bóveda de Obsidian.\n\n" +
         "Tu ecosistema está vigilante las 24 horas.";
       await sendTelegramMessage(chatId, statusMsg);
       return res.status(200).json({ ok: true, handled: "status" });
@@ -107,6 +104,8 @@ export default async function handler(req, res) {
         "• `Tarea: [texto]` — Añadir tarea a tus Objetivos del Día\n" +
         "• `Nota: [texto]` — Guardar nota en Inbox y Bitácora\n" +
         "• `Agenda: [texto]` o `Evento: [texto]` — Agendar cita/reunión\n" +
+        "• `Memo: [Destinatario] | [Asunto] | [Cuerpo]` — Redactar Memo CUSPAL\n" +
+        "• `Oficio: [Destinatario] | [Cargo] | [Cuerpo]` — Redactar Oficio CUSPAL\n" +
         "• `Status` — Diagnóstico del nodo en la nube\n" +
         "• Cualquier otro texto se guardará automáticamente en tu Inbox.\n\n" +
         "_Todo queda respaldado en Supabase y se sincronizará a tu Obsidian cuando actives tu laptop._";
@@ -119,6 +118,7 @@ export default async function handler(req, res) {
     let cleanContent = text;
     let replyHeader = "📝 *Captura Guardada en la Nube:*";
     let targetSection = "Inbox.md";
+    let customNotice = "Almacenado en Supabase. Se inyectará a tu Bóveda local en cuanto tu laptop esté activa.";
 
     if (lower.startsWith("tarea:") || lower.startsWith("/tarea") || lower.startsWith("tarea ")) {
       type = "task";
@@ -135,9 +135,20 @@ export default async function handler(req, res) {
       cleanContent = text.includes(":") ? text.split(":")[1].trim() : text.replace(/^\/?(agenda|evento|reunion)\s+/i, "").trim();
       replyHeader = "📅 *Evento Asegurado en la Nube:*";
       targetSection = "Bitácora Diaria (Actividades & Reuniones)";
+    } else if (lower.startsWith("memo:") || lower.startsWith("/memo") || lower.startsWith("memo ")) {
+      type = "memo";
+      cleanContent = text.includes(":") ? text.split(":", 1)[1].trim() : text.replace(/^\/?memo\s+/i, "").trim();
+      replyHeader = "📄 *Memo CUSPAL Recibido en la Nube:*";
+      targetSection = "Generador de Memos CUSPAL (Word .DOCX)";
+      customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
+    } else if (lower.startsWith("oficio:") || lower.startsWith("/oficio") || lower.startsWith("oficio ")) {
+      type = "oficio";
+      cleanContent = text.includes(":") ? text.split(":", 1)[1].trim() : text.replace(/^\/?oficio\s+/i, "").trim();
+      replyHeader = "📄 *Oficio CUSPAL Recibido en la Nube:*";
+      targetSection = "Generador de Oficios CUSPAL (Word .DOCX)";
+      customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
     }
 
-    // Estructurar el objeto de transacción para el Buffer
     const timestamp = new Date().toISOString();
     const payload = {
       id: `msg_${Date.now()}_${msgId}`,
@@ -158,7 +169,7 @@ export default async function handler(req, res) {
         `☁️ ${replyHeader}\n` +
         `\`${cleanContent}\`\n\n` +
         `📂 *Destino:* ${targetSection}\n` +
-        `⏳ *Estado:* Almacenado en Supabase. Se inyectará a tu Bóveda local en cuanto tu laptop esté activa.`;
+        `⏳ *Estado:* ${customNotice}`;
       await sendTelegramMessage(chatId, confirmText);
     } else {
       await sendTelegramMessage(chatId, "⚠️ Recibí tu mensaje, pero hubo un detalle al guardar en Supabase. Reintenta en unos instantes.");
