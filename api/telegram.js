@@ -120,30 +120,37 @@ export default async function handler(req, res) {
     let targetSection = "Inbox.md";
     let customNotice = "Almacenado en Supabase. Se inyectará a tu Bóveda local en cuanto tu laptop esté activa.";
 
+    function getBody(src, keyword) {
+      if (src.includes(":")) {
+        return src.substring(src.indexOf(":") + 1).trim();
+      }
+      return src.replace(new RegExp(`^\\/?${keyword}\\s*`, "i"), "").trim();
+    }
+
     if (lower.startsWith("tarea:") || lower.startsWith("/tarea") || lower.startsWith("tarea ")) {
       type = "task";
-      cleanContent = text.includes(":") ? text.split(":")[1].trim() : text.replace(/^\/?tarea\s+/i, "").trim();
+      cleanContent = getBody(text, "tarea");
       replyHeader = "🎯 *Tarea Asegurada en la Nube:*";
       targetSection = "Bitácora Diaria (Objetivos de la Jornada)";
     } else if (lower.startsWith("nota:") || lower.startsWith("/nota") || lower.startsWith("nota ")) {
       type = "note";
-      cleanContent = text.includes(":") ? text.split(":")[1].trim() : text.replace(/^\/?nota\s+/i, "").trim();
+      cleanContent = getBody(text, "nota");
       replyHeader = "💡 *Nota Asegurada en la Nube:*";
       targetSection = "Inbox.md & Bitácora Diaria";
     } else if (lower.startsWith("agenda:") || lower.startsWith("/agenda") || lower.startsWith("evento:") || lower.startsWith("/evento") || lower.startsWith("reunion:")) {
       type = "event";
-      cleanContent = text.includes(":") ? text.split(":")[1].trim() : text.replace(/^\/?(agenda|evento|reunion)\s+/i, "").trim();
+      cleanContent = getBody(text, "(agenda|evento|reunion)");
       replyHeader = "📅 *Evento Asegurado en la Nube:*";
       targetSection = "Bitácora Diaria (Actividades & Reuniones)";
     } else if (lower.startsWith("memo:") || lower.startsWith("/memo") || lower.startsWith("memo ")) {
       type = "memo";
-      cleanContent = text.includes(":") ? text.split(":", 1)[1].trim() : text.replace(/^\/?memo\s+/i, "").trim();
+      cleanContent = getBody(text, "memo");
       replyHeader = "📄 *Memo CUSPAL Recibido en la Nube:*";
       targetSection = "Generador de Memos CUSPAL (Word .DOCX)";
       customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
     } else if (lower.startsWith("oficio:") || lower.startsWith("/oficio") || lower.startsWith("oficio ")) {
       type = "oficio";
-      cleanContent = text.includes(":") ? text.split(":", 1)[1].trim() : text.replace(/^\/?oficio\s+/i, "").trim();
+      cleanContent = getBody(text, "oficio");
       replyHeader = "📄 *Oficio CUSPAL Recibido en la Nube:*";
       targetSection = "Generador de Oficios CUSPAL (Word .DOCX)";
       customNotice = "Se compilará en formato oficial Word .docx y se te adjuntará aquí en cuanto tu laptop esté activa.";
