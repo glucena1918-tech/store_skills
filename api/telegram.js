@@ -302,9 +302,9 @@ async function askJARVISAI(prompt) {
 async function generateAndSendPresentation(chatId, query) {
   try {
     await sendTelegramMessage(chatId, 
-      `⏳ *Generando Presentación Ejecutiva CUSPAL...*\n\n` +
+      `⏳ *Generando Presentación Ejecutiva...*\n\n` +
       `📌 *Tema:* _${query}_\n` +
-      `🧠 _Consultando 324 notas de la Bóveda en la nube y aplicando la plantilla oficial..._`
+      `🧠 _Consultando memoria de la Bóveda en la nube y aplicando la plantilla oficial..._`
     );
 
     const presentationData = await analyzeAndStructurePresentation(query);
@@ -319,7 +319,7 @@ async function generateAndSendPresentation(chatId, query) {
 
     const slideCount = (presentationData.slides ? presentationData.slides.length : 0) + 2;
     const caption = 
-      `📊 *PRESENTACIÓN EJECUTIVA CUSPAL LISTA*\n\n` +
+      `📊 *PRESENTACIÓN EJECUTIVA LISTA*\n\n` +
       `📁 *Documento:* \`${filename}\`\n` +
       `📌 *Título:* ${presentationData.title || "Presentación Institucional"}\n` +
       `📑 *Total Láminas:* ${slideCount} (Portada + ${slideCount - 2} Contenido + Cierre)\n` +
@@ -593,21 +593,35 @@ export default async function handler(req, res) {
     const lower = text.toLowerCase();
 
     // ==========================================
-    // 0. GENERADOR DE PRESENTACIONES CUSPAL
-    // Detecta tanto comandos explícitos como dictados por voz
+    // 0. GENERADOR DE PRESENTACIONES EJECUTIVAS
+    // Detecta peticiones directas, por texto o por notas de voz (speech-to-action)
     // ==========================================
-    const isPresentationIntent = 
-      lower.startsWith("presentacion:") || lower.startsWith("presentación:") ||
-      lower.startsWith("/presentacion") || lower.startsWith("/presentación") ||
-      lower.startsWith("presentacion ") || lower.startsWith("presentación ") ||
-      lower.includes("haz una presentacion") || lower.includes("haz una presentación") ||
-      lower.includes("crear presentacion") || lower.includes("crear presentación") ||
-      lower.includes("genera una presentacion") || lower.includes("genera una presentación") ||
-      lower.includes("prepara una presentacion") || lower.includes("prepara una presentación") ||
-      lower.includes("balance de silos");
+    const isExplicitNoteOrTask = 
+      lower.startsWith("tarea:") || lower.startsWith("/tarea") ||
+      lower.startsWith("nota:") || lower.startsWith("/nota") ||
+      lower.startsWith("agenda:") || lower.startsWith("/agenda") ||
+      lower.startsWith("evento:") || lower.startsWith("/evento") ||
+      lower.startsWith("borrador:") || lower.startsWith("/borrador") ||
+      lower.startsWith("enviar email:") || lower.startsWith("/email") ||
+      lower.startsWith("check ") || lower.startsWith("/check ");
+
+    const isPresentationIntent = !isExplicitNoteOrTask && (
+      lower.includes("presentacion") || lower.includes("presentación") ||
+      lower.includes("diapositiva") || lower.includes("diapositivas") ||
+      lower.includes("powerpoint") || lower.includes("pptx") ||
+      lower.includes("lámina") || lower.includes("lamina") ||
+      lower.includes("láminas") || lower.includes("laminas") ||
+      lower.includes("slides") ||
+      lower.includes("balance de silos")
+    );
 
     if (isPresentationIntent) {
-      const topic = getBody(text, "(presentacion|presentación|crear presentacion|crear presentación|haz una presentacion|haz una presentación|genera una presentacion|genera una presentación|prepara una presentacion|prepara una presentación)");
+      let topic = text;
+      if (lower.startsWith("presentacion:") || lower.startsWith("presentación:")) {
+        topic = text.replace(/^presentaci[oó]n:\s*/i, "").trim();
+      } else if (lower.startsWith("/presentacion") || lower.startsWith("/presentación")) {
+        topic = text.replace(/^\/presentaci[oó]n\s*/i, "").trim();
+      }
       await generateAndSendPresentation(chatId, topic || text);
       return res.status(200).json({ ok: true, handled: "presentation" });
     }
