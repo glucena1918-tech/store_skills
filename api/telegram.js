@@ -9,9 +9,6 @@ const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
     const payload = {
       chat_id: chatId,
       text: text,
@@ -39,7 +36,6 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     console.error("Error enviando mensaje Telegram:", err);
   }
 }
-
 async function uploadToSupabaseBuffer(filename, data) {
   try {
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/pending/${filename}`;
