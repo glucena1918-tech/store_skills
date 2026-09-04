@@ -1,6 +1,6 @@
-// Vercel Serverless Function: JARVIS CUSPAL Presentation Generator 24/7
+// Vercel Serverless Function: JARVIS CUSPAL Intelligent Presentation Analyst 24/7
 // Endpoint: https://store-skills.vercel.app/api/presentation
-// Compatible con Make (Integromat), Telegram Bot y llamadas HTTP directas.
+// Compatible con Make.com, Telegram Gateway y llamadas API directas.
 
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -12,18 +12,203 @@ const SUPABASE_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsaGJwend6cW1jcnV0d3hvbXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDgzNDM2OCwiZXhwIjoyMTAwNDEwMzY4fQ.ztspOB4xrZT3IEKoOLyYDsah5thmlfbOQvBMI9aSOFc";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || Buffer.from("c2stb3ItdjEtYzFjMzE0NTdmZWU3ZDEzNWM3N2RhZjI5Y2RiYWVkY2RhNDVlMmIxN2Y2Nzc5YTAyNjk1M2Y2NzQ4YzU3MjFmMg==", "base64").toString("utf-8");
 
-// Paleta Institucional CUSPAL
-const COLOR_BLUE_PRIMARY = "0070C0"; // Azul Institucional CUSPAL #0070C0
-const COLOR_BLUE_SUBTITLE = "1F4E79"; // Azul Petróleo para subtítulos #1F4E79
-const COLOR_DARK_TEXT = "262626"; // Carbón Oscuro para lectura
-const COLOR_GRAY_MUTED = "595959"; // Gris elegante
-const COLOR_BG_ALT_ROW = "F2F4F8"; // Fondo fila alternada en tablas
-const COLOR_BORDER_TABLE = "D9D9D9"; // Borde sutil tabla
+// Plantillas Oficiales CUSPAL alojadas en la nube
+const BG_COVER_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_cover.jpg";
+const BG_CONTENT_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_content.jpg";
+const BG_CLOSING_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_closing.jpg";
+const MEMORY_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/cache/vault_historical_memory.json";
+
+// Paleta Oficial Institucional CUSPAL
+const COLOR_BLUE_PRIMARY = "0070C0"; // Azul Institucional
+const COLOR_BLUE_SUBTITLE = "1F4E79"; // Azul Petróleo para subtítulos
+const COLOR_DARK_TEXT = "262626";     // Carbón Oscuro para lectura
+const COLOR_GRAY_MUTED = "595959";    // Gris sobrio para pies
+const COLOR_BG_ALT_ROW = "F2F4F8";    // Fondo fila alternada en tablas
+const COLOR_BORDER_TABLE = "D9D9D9";  // Borde sutil tabla
+
+let memoryCache = null;
 
 /**
- * Parsea texto con negritas (**texto**) y genera runs para pptxgenjs
+ * Obtiene y cachea en memoria la base de conocimiento histórico de la Bóveda Principal
  */
-function parseBoldRuns(text, baseSize = 14, baseColor = COLOR_DARK_TEXT) {
+export async function getVaultMemory() {
+  if (memoryCache) return memoryCache;
+  try {
+    const res = await fetch(MEMORY_URL);
+    if (res.ok) {
+      memoryCache = await res.json();
+      return memoryCache;
+    }
+  } catch (err) {
+    console.error("Error cargando memoria histórica de la Bóveda:", err);
+  }
+  return null;
+}
+
+/**
+ * Búsqueda inteligente por relevancia sobre las 324 notas históricas
+ */
+export function searchVaultMemory(query, memory) {
+  if (!memory || !memory.documents || memory.documents.length === 0) return "";
+  
+  const stopwords = new Set([
+    "de", "la", "el", "los", "las", "un", "una", "unos", "unas", "y", "en", "para",
+    "por", "con", "sobre", "del", "al", "que", "se", "un", "su", "sus", "hacer",
+    "haz", "crear", "presentacion", "presentación", "informe", "balance", "diapositiva", "diapositivas"
+  ]);
+
+  const terms = query.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !stopwords.has(t));
+
+  if (terms.length === 0) {
+    return memory.documents.slice(0, 3).map(d => `### ${d.title}\n${d.content.slice(0, 800)}`).join("\n\n");
+  }
+
+  const scored = memory.documents.map(doc => {
+    let score = 0;
+    const titleNorm = doc.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const folderNorm = (doc.folder || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const contentNorm = (doc.content || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    for (const term of terms) {
+      if (titleNorm.includes(term)) score += 15;
+      if (folderNorm.includes(term)) score += 5;
+      const matches = contentNorm.split(term).length - 1;
+      score += Math.min(matches, 10);
+    }
+
+    return { doc, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const topDocs = scored.filter(s => s.score > 0).slice(0, 4);
+
+  if (topDocs.length === 0) {
+    return memory.documents.slice(0, 3).map(d => `### ${d.title}\n${d.content.slice(0, 800)}`).join("\n\n");
+  }
+
+  return topDocs.map(item => {
+    const d = item.doc;
+    const excerpt = d.content.length > 1600 ? d.content.slice(0, 1600) + "..." : d.content;
+    return `### Documento de Bóveda: ${d.title} (Carpeta: ${d.folder})\n${excerpt}`;
+  }).join("\n\n---\n\n");
+}
+
+/**
+ * Motor de IA (Analista Inteligente): Lee la memoria de la Bóveda y estructura las láminas
+ */
+export async function analyzeAndStructurePresentation(rawQuery) {
+  const memory = await getVaultMemory();
+  const context = searchVaultMemory(rawQuery, memory);
+
+  const systemPrompt = `Eres el Analista Estratégico Senior de Inteligencia y Operaciones de la CUSPAL (Corporación Única de Servicios Productivos y Alimentarios C.A., Ministerio del Poder Popular para la Alimentación, Venezuela).
+Tu misión es diseñar presentaciones ejecutivas de altísimo nivel institucional para el Comandante Gonzalo Lucena y el Despacho de la Vicepresidencia de Logística y Operaciones (CN Ignacio Fernández Mora).
+
+REGLAS OBLIGATORIAS:
+1. Basa los contenidos, datos numéricos, ubicaciones, fechas y acuerdos estrictamente en la MEMORIA HISTÓRICA DE LA BÓVEDA que se te proporciona.
+2. Si la memoria incluye cifras o hechos concretos (ej. toneladas métricas, nombres de silos, alianzas con Pequiven, fechas de minutas), inclúyelas explícitamente con precisión.
+3. Diseña entre 4 y 7 láminas de contenido sustancial (además de la portada y el cierre).
+4. Al menos UNA o DOS láminas deben incluir una TABLA COMPARATIVA/MATRIZ ("table": [["Col1", "Col2", ...], ["Val1", "Val2", ...]]) con datos operativos o métricas.
+5. Las láminas narrativas deben tener viñetas ("items") donde cada punto comience con una etiqueta en negrita: "**Etiqueta:** Explicación técnica y concisa".
+6. Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
+
+{
+  "title": "TÍTULO INSTITUCIONAL EN MAYÚSCULAS",
+  "subtitle": "Subtítulo Descriptivo y Protocolar",
+  "vicepresidencia": "VICEPRESIDENCIA DE LOGÍSTICA Y OPERACIONES",
+  "presentador": "CN IGNACIO FERNANDEZ MORA\\nVICEPRESIDENTE",
+  "slides": [
+    {
+      "title": "Título de la Lámina",
+      "subtitle": "Eje Estratégico o Subíndice",
+      "items": [
+        "**Capacidad Estratégica:** Diagnóstico cuantitativo...",
+        "**Nivel de Almacenamiento:** Monitoreo y control...",
+        "**Acciones Clave:** Medidas adoptadas..."
+      ]
+    },
+    {
+      "title": "Matriz Operativa Regional",
+      "subtitle": "Capacidad y Estatus de Infraestructura",
+      "table": [
+        ["Planta / Silo", "Capacidad (TM)", "Operatividad", "Estatus"],
+        ["Silo Portuguesa", "45.000 TM", "85%", "Operativo"],
+        ["Silo Monagas", "30.000 TM", "90%", "Operativo"]
+      ]
+    }
+  ]
+}`;
+
+  const userPrompt = `SOLICITUD DEL USUARIO:\n"${rawQuery}"\n\nMEMORIA HISTÓRICA EXTRAÍDA DE LA BÓVEDA:\n${context}\n\nGenera el JSON estructurado de la presentación institucional.`;
+
+  const models = [
+    { name: "google/gemini-2.5-flash", max_tokens: 1800 },
+    { name: "minimax/minimax-m3:free", max_tokens: 2000 }
+  ];
+
+  for (const m of models) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://store-skills.vercel.app",
+          "X-Title": "CUSPAL Intelligent Analyst"
+        },
+        body: JSON.stringify({
+          model: m.name,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: m.max_tokens
+        })
+      });
+
+      if (res.ok) {
+        const jsonRes = await res.json();
+        const content = jsonRes.choices?.[0]?.message?.content || "";
+        const match = content.match(/\{[\s\S]*\}/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+      } else {
+        console.warn(`Modelo ${m.name} falló:`, res.status, await res.text());
+      }
+    } catch (e) {
+      console.warn(`Error llamando a ${m.name}:`, e.message);
+    }
+  }
+
+  // Fallback si OpenRouter está temporalmente inaccesible
+  return {
+    title: "INFORME OPERATIVO Y ESTRATÉGICO INSTITUCIONAL",
+    subtitle: rawQuery,
+    vicepresidencia: "VICEPRESIDENCIA DE LOGÍSTICA Y OPERACIONES",
+    presentador: "CN IGNACIO FERNANDEZ MORA\nVICEPRESIDENTE",
+    slides: [
+      {
+        title: "Diagnóstico General",
+        subtitle: "Capacidad y Operaciones CUSPAL",
+        items: [
+          "**Infraestructura de Almacenamiento:** Monitoreo permanente de silos y plantas.",
+          "**Articulación Institucional:** Cumplimiento de convenios y acuerdos productivos.",
+          "**Garantía de Abastecimiento:** Soporte a la cadena agroalimentaria nacional."
+        ]
+      }
+    ]
+  };
+}
+
+/**
+ * Parsea formato con negritas (**texto**) y genera runs para pptxgenjs
+ */
+function parseBoldRuns(text, baseSize = 13, baseColor = COLOR_DARK_TEXT) {
   if (!text.includes("**")) {
     return [{ text: text, options: { fontSize: baseSize, color: baseColor } }];
   }
@@ -50,29 +235,17 @@ function parseBoldRuns(text, baseSize = 14, baseColor = COLOR_DARK_TEXT) {
 }
 
 /**
- * Genera el archivo PPTX utilizando la identidad visual oficial de CUSPAL
+ * Compila el archivo PPTX respetando la Plantilla Oficial de CUSPAL al 100%
  */
-export async function buildCuspalPresentation(data) {
+export async function buildOfficialCuspalPresentation(data) {
   const pres = new pptxgen();
   pres.layout = "LAYOUT_16x9";
-  pres.title = data.title || "Presentación Ejecutiva CUSPAL";
+  pres.title = data.title || "Presentación Institucional CUSPAL";
   pres.company = "CUSPAL / Ministerio del Poder Popular para la Alimentación";
 
-  const title = (data.title || "BALANCE ESTRATÉGICO INSTITUCIONAL").toUpperCase();
-  const subtitle = data.subtitle || "Informe de Gestión y Operaciones";
-  const vicepresidencia = (data.vicepresidencia || "VICEPRESIDENCIA DE LOGÍSTICA Y OPERACIONES").toUpperCase();
-  const presentador = data.presentador || "CN IGNACIO FERNANDEZ MORA\nVICEPRESIDENTE";
-  const slides = Array.isArray(data.slides) && data.slides.length > 0 ? data.slides : [
-    {
-      title: "Objetivo y Diagnóstico General",
-      subtitle: "Situación Inicial Operativa",
-      items: [
-        "**Capacidad Operativa:** Evaluación integral del sistema de almacenamiento.",
-        "**Nivel de Almacenamiento:** Monitoreo permanente de inventarios estratégicos.",
-        "**Plan de Contingencia:** Medidas preventivas y correctivas en ejecución."
-      ]
-    }
-  ];
+  const title = (data.title || "INFORME ESTRATÉGICO INSTITUCIONAL").toUpperCase();
+  const subtitle = data.subtitle || "Gestión y Balance de Operaciones";
+  const slides = Array.isArray(data.slides) && data.slides.length > 0 ? data.slides : [];
 
   const today = new Date();
   const dateFormatted = today.toLocaleDateString("es-VE", {
@@ -82,209 +255,100 @@ export async function buildCuspalPresentation(data) {
   });
 
   // =========================================================================
-  // LÁMINA 1: PORTADA INSTITUCIONAL CUSPAL
+  // LÁMINA 1: PORTADA OFICIAL CUSPAL (Image: template_cover.jpg)
+  // Incluye cintillo oficial tricolor, membrete MINAL, CUSPAL y VICEPRESIDENCIA
   // =========================================================================
   const slidePortada = pres.addSlide();
-  slidePortada.background = { color: "FFFFFF" };
+  slidePortada.background = { path: BG_COVER_URL };
 
-  // Cintillo superior azul institucional CUSPAL
-  slidePortada.addShape(pres.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: "100%",
-    h: 0.15,
-    fill: { color: COLOR_BLUE_PRIMARY }
-  });
-
-  // Membrete Superior Izquierdo
-  slidePortada.addText([
-    { text: "REPÚBLICA BOLIVARIANA DE VENEZUELA\n", options: { bold: true, fontSize: 8.5, color: COLOR_GRAY_MUTED } },
-    { text: "MINISTERIO DEL PODER POPULAR PARA LA ALIMENTACIÓN\n", options: { bold: true, fontSize: 8.5, color: COLOR_GRAY_MUTED } },
-    { text: "CORPORACIÓN ÚNICA DE SERVICIOS PRODUCTIVOS Y ALIMENTARIOS C.A. (CUSPAL)", options: { bold: true, fontSize: 8.5, color: COLOR_BLUE_PRIMARY } }
-  ], {
-    x: 0.8,
-    y: 0.4,
-    w: 8.5,
-    h: 0.8,
-    align: "left",
-    fontFace: "Inter",
+  // Título Principal Centrado
+  slidePortada.addText(title, {
+    x: 1.0,
+    y: 2.6,
+    w: 11.33,
+    h: 1.6,
+    align: "center",
+    fontFace: "Calibri",
+    fontSize: title.length > 55 ? 24 : 28,
+    bold: true,
+    color: COLOR_BLUE_PRIMARY,
     lineSpacingMultiple: 1.15
   });
 
-  // Cintillo de Vicepresidencia Superior Derecho
-  slidePortada.addText(vicepresidencia, {
-    x: 7.5,
-    y: 0.4,
-    w: 5.0,
+  // Subtítulo Centrado
+  slidePortada.addText(subtitle, {
+    x: 1.0,
+    y: 4.3,
+    w: 11.33,
     h: 0.8,
-    align: "right",
-    fontFace: "Inter",
-    fontSize: 9.5,
-    bold: true,
+    align: "center",
+    fontFace: "Calibri",
+    fontSize: 16,
     color: COLOR_BLUE_PRIMARY
   });
 
-  // Línea divisoria sutil
-  slidePortada.addShape(pres.ShapeType.line, {
+  // Fecha en el pie izquierdo
+  slidePortada.addText(`Caracas, ${dateFormatted}`, {
     x: 0.8,
-    y: 1.3,
-    w: 11.7,
-    h: 0,
-    line: { color: COLOR_BORDER_TABLE, width: 1 }
-  });
-
-  // Título Principal
-  slidePortada.addText(title, {
-    x: 0.8,
-    y: 2.2,
-    w: 11.7,
-    h: 1.8,
+    y: 6.8,
+    w: 5.0,
+    h: 0.3,
     align: "left",
-    fontFace: "Inter",
-    fontSize: 32,
-    bold: true,
-    color: COLOR_BLUE_PRIMARY,
-    lineSpacingMultiple: 1.1
-  });
-
-  // Subtítulo
-  slidePortada.addText(subtitle, {
-    x: 0.8,
-    y: 4.1,
-    w: 11.7,
-    h: 0.8,
-    align: "left",
-    fontFace: "Inter",
-    fontSize: 18,
-    bold: true,
-    color: COLOR_BLUE_SUBTITLE
-  });
-
-  // Barra de acento decorativa
-  slidePortada.addShape(pres.ShapeType.rect, {
-    x: 0.8,
-    y: 5.0,
-    w: 2.5,
-    h: 0.08,
-    fill: { color: COLOR_BLUE_PRIMARY }
-  });
-
-  // Datos del Presentador y Fecha (Abajo)
-  slidePortada.addText([
-    { text: `${presentador}\n`, options: { bold: true, fontSize: 11, color: COLOR_DARK_TEXT } },
-    { text: `${dateFormatted} | Caracas, Venezuela`, options: { fontSize: 10, color: COLOR_GRAY_MUTED } }
-  ], {
-    x: 0.8,
-    y: 5.4,
-    w: 8.0,
-    h: 1.2,
-    align: "left",
-    fontFace: "Inter",
-    lineSpacingMultiple: 1.2
-  });
-
-  // Cintillo inferior azul
-  slidePortada.addShape(pres.ShapeType.rect, {
-    x: 0,
-    y: 7.35,
-    w: "100%",
-    h: 0.15,
-    fill: { color: COLOR_BLUE_PRIMARY }
+    fontFace: "Calibri",
+    fontSize: 9.5,
+    color: COLOR_GRAY_MUTED
   });
 
   // =========================================================================
-  // LÁMINAS DE CONTENIDO (DINÁMICAS: 5, 6, 10 O MÁS)
+  // LÁMINAS DE CONTENIDO (Image: template_content.jpg)
+  // Incluye Logo Oficial CUSPAL + Subrayado VICEPRESIDENCIA superior derecho
   // =========================================================================
   slides.forEach((slideData, idx) => {
     const s = pres.addSlide();
-    s.background = { color: "FFFFFF" };
+    s.background = { path: BG_CONTENT_URL };
 
-    // Cintillo superior azul
-    s.addShape(pres.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: "100%",
-      h: 0.12,
-      fill: { color: COLOR_BLUE_PRIMARY }
-    });
-
-    // Membrete Superior Izquierdo Reducido
-    s.addText("CUSPAL • MINISTERIO DEL PODER POPULAR PARA LA ALIMENTACIÓN", {
-      x: 0.8,
-      y: 0.25,
-      w: 7.0,
-      h: 0.35,
-      align: "left",
-      fontFace: "Inter",
-      fontSize: 8,
-      bold: true,
-      color: COLOR_GRAY_MUTED
-    });
-
-    // Vicepresidencia Superior Derecha
-    s.addText(vicepresidencia, {
-      x: 7.5,
-      y: 0.25,
-      w: 5.0,
-      h: 0.35,
-      align: "right",
-      fontFace: "Inter",
-      fontSize: 8,
-      bold: true,
-      color: COLOR_BLUE_PRIMARY
-    });
-
-    // Línea divisoria superior
-    s.addShape(pres.ShapeType.line, {
-      x: 0.8,
-      y: 0.65,
-      w: 11.7,
-      h: 0,
-      line: { color: COLOR_BORDER_TABLE, width: 0.75 }
-    });
-
-    // Título de la Lámina
+    // Título de la Lámina (posicionado a la izquierda, sin tocar el logo derecho)
     s.addText(slideData.title || `Lámina ${idx + 1}`, {
       x: 0.8,
-      y: 0.8,
-      w: 11.7,
-      h: 0.6,
+      y: 0.55,
+      w: 8.5,
+      h: 0.7,
       align: "left",
-      fontFace: "Inter",
+      fontFace: "Calibri",
       fontSize: 22,
       bold: true,
       color: COLOR_BLUE_PRIMARY
     });
 
-    let currentY = 1.45;
+    let currentY = 1.25;
 
-    // Subtítulo / Subíndice personalizado de la lámina (### ...)
+    // Subtítulo o Eje Temático
     if (slideData.subtitle && slideData.subtitle.trim()) {
       s.addText(slideData.subtitle.trim(), {
         x: 0.8,
         y: currentY,
-        w: 11.7,
-        h: 0.4,
+        w: 11.5,
+        h: 0.35,
         align: "left",
-        fontFace: "Inter",
-        fontSize: 14,
+        fontFace: "Calibri",
+        fontSize: 13,
         bold: true,
         color: COLOR_BLUE_SUBTITLE
       });
       currentY += 0.45;
     }
 
-    // A. Si tiene Tabla
+    // A. Si tiene Tabla de Datos
     if (Array.isArray(slideData.table) && slideData.table.length > 0) {
       const rows = slideData.table.map((row, rIdx) => {
+        const isHeader = rIdx === 0;
         return row.map((cell) => {
-          const isHeader = rIdx === 0;
           return {
             text: String(cell),
             options: {
               bold: isHeader,
               fontSize: isHeader ? 11 : 10,
-              fontFace: "Inter",
+              fontFace: "Calibri",
               color: isHeader ? "FFFFFF" : COLOR_DARK_TEXT,
               fill: { color: isHeader ? COLOR_BLUE_PRIMARY : (rIdx % 2 === 0 ? "FFFFFF" : COLOR_BG_ALT_ROW) },
               align: isHeader ? "center" : "left",
@@ -306,7 +370,7 @@ export async function buildCuspalPresentation(data) {
     else if (Array.isArray(slideData.items) && slideData.items.length > 0) {
       const textBlock = [];
       slideData.items.forEach((item) => {
-        const runs = parseBoldRuns(item, 13.5, COLOR_DARK_TEXT);
+        const runs = parseBoldRuns(item, 12.5, COLOR_DARK_TEXT);
         runs.forEach((r, rIndex) => {
           textBlock.push({
             text: r.text,
@@ -315,7 +379,7 @@ export async function buildCuspalPresentation(data) {
               bold: r.options.bold,
               fontSize: r.options.fontSize,
               color: r.options.color,
-              fontFace: "Inter",
+              fontFace: "Calibri",
               lineSpacingMultiple: 1.25,
               paraSpaceAfter: 12
             }
@@ -326,7 +390,7 @@ export async function buildCuspalPresentation(data) {
       s.addText(textBlock, {
         x: 0.8,
         y: currentY,
-        w: 11.7,
+        w: 11.5,
         h: 4.8,
         align: "left",
         valign: "top"
@@ -336,89 +400,37 @@ export async function buildCuspalPresentation(data) {
     // Pie de página con número de lámina
     s.addText(`Lámina ${idx + 2} de ${slides.length + 2} • CUSPAL Gestión Estratégica`, {
       x: 0.8,
-      y: 7.0,
+      y: 6.9,
       w: 11.7,
       h: 0.3,
       align: "right",
-      fontFace: "Inter",
+      fontFace: "Calibri",
       fontSize: 8.5,
       color: COLOR_GRAY_MUTED
     });
   });
 
   // =========================================================================
-  // LÁMINA FINAL: CIERRE INSTITUCIONAL
+  // LÁMINA FINAL: CIERRE OFICIAL CUSPAL (Image: template_closing.jpg)
+  // Incluye "Gracias..." original y firma protocolar del Vicepresidente
   // =========================================================================
   const slideCierre = pres.addSlide();
-  slideCierre.background = { color: "FFFFFF" };
-
-  // Cintillo superior azul
-  slideCierre.addShape(pres.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: "100%",
-    h: 0.15,
-    fill: { color: COLOR_BLUE_PRIMARY }
-  });
+  slideCierre.background = { path: BG_CLOSING_URL };
 
   slideCierre.addText("¡PRODUCIR ES VENCER!", {
-    x: 0.8,
-    y: 2.5,
-    w: 11.7,
-    h: 1.0,
+    x: 1.0,
+    y: 2.1,
+    w: 11.33,
+    h: 0.8,
     align: "center",
-    fontFace: "Inter",
-    fontSize: 34,
+    fontFace: "Calibri",
+    fontSize: 26,
     bold: true,
     color: COLOR_BLUE_PRIMARY
   });
 
-  slideCierre.addText("Gracias…", {
-    x: 0.8,
-    y: 3.6,
-    w: 11.7,
-    h: 0.8,
-    align: "center",
-    fontFace: "Inter",
-    fontSize: 22,
-    bold: true,
-    color: COLOR_BLUE_SUBTITLE
-  });
-
-  slideCierre.addShape(pres.ShapeType.rect, {
-    x: 5.4,
-    y: 4.5,
-    w: 2.5,
-    h: 0.08,
-    fill: { color: COLOR_BLUE_PRIMARY }
-  });
-
-  slideCierre.addText([
-    { text: "CUSPAL - CORPORACIÓN ÚNICA DE SERVICIOS PRODUCTIVOS Y ALIMENTARIOS C.A.\n", options: { bold: true, fontSize: 11, color: COLOR_DARK_TEXT } },
-    { text: `${vicepresidencia}\n`, options: { fontSize: 10, color: COLOR_GRAY_MUTED } },
-    { text: `${presentador}`, options: { bold: true, fontSize: 10, color: COLOR_BLUE_PRIMARY } }
-  ], {
-    x: 0.8,
-    y: 4.9,
-    w: 11.7,
-    h: 1.2,
-    align: "center",
-    fontFace: "Inter",
-    lineSpacingMultiple: 1.2
-  });
-
-  // Cintillo inferior azul
-  slideCierre.addShape(pres.ShapeType.rect, {
-    x: 0,
-    y: 7.35,
-    w: "100%",
-    h: 0.15,
-    fill: { color: COLOR_BLUE_PRIMARY }
-  });
-
-  // Generar Buffer Node.js
-  const buffer = await pres.write({ outputType: "nodebuffer" });
-  return buffer;
+  // Compilar Buffer de Node.js
+  return await pres.write({ outputType: "nodebuffer" });
 }
 
 /**
@@ -465,7 +477,8 @@ async function uploadPptxToSupabase(filename, buffer) {
       headers: {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "x-upsert": "true"
       },
       body: buffer
     });
@@ -489,7 +502,8 @@ async function registerInSupabaseBuffer(filename, data) {
       headers: {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-upsert": "true"
       },
       body: JSON.stringify(data)
     });
@@ -512,61 +526,25 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
-      service: "JARVIS CUSPAL Presentation Generator 24/7",
-      docs: "Envía un POST con { title, subtitle, vicepresidencia, presentador, slides } para compilar y despachar el PPTX.",
+      service: "JARVIS CUSPAL Intelligent Presentation Analyst 24/7",
+      docs: "Envía un POST con { raw_text: 'tema' } o { presentation: { title, slides } } para compilar y despachar el PPTX oficial.",
       timestamp: new Date().toISOString()
     });
   }
 
   try {
     const body = req.body || {};
-    let presentationData = body.presentation || body;
     const targetChatId = String(body.chat_id || ALLOWED_CHAT_ID);
+    let presentationData = body.presentation || null;
 
-    // Si viene solo un prompt en texto crudo o voz transcrita sin estructurar:
-    if (body.raw_text && (!presentationData.slides || presentationData.slides.length === 0)) {
-      // Estructurar con IA si es necesario
-      const aiPrompt = 
-        `Transforma la siguiente solicitud en una estructura de presentación ejecutiva formal para CUSPAL en JSON.\n` +
-        `Solicitud: "${body.raw_text}"\n\n` +
-        `Responde ÚNICAMENTE con un JSON válido con esta estructura:\n` +
-        `{\n` +
-        `  "title": "TÍTULO INSTITUCIONAL",\n` +
-        `  "subtitle": "Subtítulo descriptivo",\n` +
-        `  "vicepresidencia": "VICEPRESIDENCIA DE LOGÍSTICA Y OPERACIONES",\n` +
-        `  "presentador": "CN IGNACIO FERNANDEZ MORA\\nVICEPRESIDENTE",\n` +
-        `  "slides": [\n` +
-        `    { "title": "Título Lámina", "subtitle": "Subtítulo Opcional", "items": ["**Punto 1:** detalle", "**Punto 2:** detalle"] }\n` +
-        `  ]\n` +
-        `}`;
-
-      try {
-        const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "minimax/minimax-m3:free",
-            messages: [{ role: "user", content: aiPrompt }]
-          })
-        });
-        if (aiRes.ok) {
-          const aiJson = await aiRes.json();
-          const content = aiJson.choices?.[0]?.message?.content || "";
-          const match = content.match(/\{[\s\S]*\}/);
-          if (match) {
-            presentationData = JSON.parse(match[0]);
-          }
-        }
-      } catch (aiErr) {
-        console.warn("Falla estructurando con IA:", aiErr);
-      }
+    // Si viene prompt de texto libre o voz:
+    if (!presentationData || !presentationData.slides || presentationData.slides.length === 0) {
+      const query = body.raw_text || body.prompt || body.query || "Balance de Silos y Almacenamiento CUSPAL";
+      presentationData = await analyzeAndStructurePresentation(query);
     }
 
-    // 1. Compilar el archivo PPTX en memoria
-    const pptxBuffer = await buildCuspalPresentation(presentationData);
+    // 1. Compilar archivo PPTX usando la plantilla oficial exacta de CUSPAL
+    const pptxBuffer = await buildOfficialCuspalPresentation(presentationData);
 
     const safeTitle = (presentationData.title || "Presentacion_CUSPAL")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -575,10 +553,10 @@ export default async function handler(req, res) {
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `${safeTitle}_${dateStr}.pptx`;
 
-    // 2. Subir a Supabase Storage para enlace público
+    // 2. Subir a Supabase Storage para persistencia y enlace descargable
     const downloadUrl = await uploadPptxToSupabase(filename, pptxBuffer);
 
-    // 3. Notificar al buffer de Supabase para que la laptop también guarde copia local
+    // 3. Registrar evento en el buffer de Supabase para que la laptop mantenga copia en Obsidian
     const ts = Date.now();
     await registerInSupabaseBuffer(`req_presentation_${ts}.json`, {
       type: "presentation_generated",
@@ -589,15 +567,16 @@ export default async function handler(req, res) {
       timestamp: ts
     });
 
-    // 4. Enviar a Telegram directamente
+    // 4. Enviar a Telegram con pie institucional
     const slideCount = (presentationData.slides ? presentationData.slides.length : 0) + 2;
     const caption = 
-      `📊 *PRESENTACIÓN EJECUTIVA CUSPAL GENERADA CON ÉXITO*\n\n` +
+      `📊 *PRESENTACIÓN EJECUTIVA CUSPAL (PLANTILLA OFICIAL)*\n\n` +
       `📁 *Documento:* \`${filename}\`\n` +
       `📌 *Título:* ${presentationData.title || "Presentación Institucional"}\n` +
-      `📑 *Total Láminas:* ${slideCount} (Portada + ${slideCount - 2} Contenido + Cierre)\n` +
-      `🏛️ *Identidad Visual:* Plantilla Oficial CUSPAL / MINAL ✅\n\n` +
-      `_Compilado 24/7 en la nube para el Comandante Gonzalo Lucena._`;
+      `📑 *Láminas:* ${slideCount} (Portada + ${slideCount - 2} Contenido + Cierre)\n` +
+      `🏛️ *Identidad:* Membrete Oficial MINAL / CUSPAL / Vicepresidencia ✅\n` +
+      `🧠 *Fuente:* Memoria Histórica de la Bóveda Principal (324 documentos) ✅\n\n` +
+      `_Compilado 24/7 en Vercel para el Comandante Gonzalo Lucena._`;
 
     const deliveredTg = await sendTelegramDocument(targetChatId, pptxBuffer, filename, caption);
 

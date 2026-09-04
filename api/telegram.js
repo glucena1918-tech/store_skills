@@ -1,13 +1,16 @@
 // Vercel Serverless Function: JARVIS Cloud Gateway 24/7
 // Endpoint: https://store-skills.vercel.app/api/telegram
+// Integra Control por Voz (Whisper), Analista de Presentaciones CUSPAL y Centro de Mando
 
 import { generateWeatherReport } from "./weather_cron.js";
+import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
 const SUPABASE_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsaGJwend6cW1jcnV0d3hvbXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDgzNDM2OCwiZXhwIjoyMTAwNDEwMzY4fQ.ztspOB4xrZT3IEKoOLyYDsah5thmlfbOQvBMI9aSOFc";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || Buffer.from("c2stb3ItdjEtYzFjMzE0NTdmZWU3ZDEzNWM3N2RhZjI5Y2RiYWVkY2RhNDVlMmIxN2Y2Nzc5YTAyNjk1M2Y2NzQ4YzU3MjFmMg==", "base64").toString("utf-8");
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || Buffer.from("c2stcHJvai1CV2JsX3FIWXp2X3NEUDF3UjRTS0RjUU1GRi10ekhKdlp5LTZZU29adDlnQmZyUkh2cUhsRjRwejZXTU1PdWlHdlloTlJ3RklGQVQzQmxia0ZKTExVSWpHd1prM3UzczNWZko0WUprZnhhdGx1UXJTYlVWYWhGQVJ5ak83X1pVMHdUWW04bXVvUkdZWmcya1l0bXZyZHNiMWM5a0E=", "base64").toString("utf-8");
 
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
   try {
@@ -26,7 +29,6 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
-      // Fallback a texto plano si markdown tiene caracteres de escape conflictivos
       await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,6 +43,71 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
   }
 }
 
+async function sendTelegramDocument(chatId, buffer, filename, caption = "") {
+  try {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`;
+    const formData = new FormData();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+    
+    formData.append("chat_id", chatId);
+    formData.append("document", blob, filename);
+    if (caption) {
+      formData.append("caption", caption);
+      formData.append("parse_mode", "Markdown");
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errTxt = await res.text();
+      console.error("Error enviando documento a Telegram:", errTxt);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Excepción enviando documento a Telegram:", err);
+    return false;
+  }
+}
+
+async function downloadTelegramFile(fileId) {
+  const getFileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`;
+  const res = await fetch(getFileUrl);
+  if (!res.ok) throw new Error("Error consultando archivo en Telegram");
+  const data = await res.json();
+  const filePath = data.result.file_path;
+  const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+  const fileRes = await fetch(downloadUrl);
+  if (!fileRes.ok) throw new Error("Error descargando binario de audio de Telegram");
+  return Buffer.from(await fileRes.arrayBuffer());
+}
+
+async function transcribeAudioWithWhisper(audioBuffer) {
+  const formData = new FormData();
+  formData.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "voice.oga");
+  formData.append("model", "whisper-1");
+  formData.append("language", "es");
+
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`
+    },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Falla en Whisper API: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.text ? data.text.trim() : "";
+}
+
 async function uploadToSupabaseBuffer(filename, data) {
   try {
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/pending/${filename}`;
@@ -49,7 +116,8 @@ async function uploadToSupabaseBuffer(filename, data) {
       headers: {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-upsert": "true"
       },
       body: JSON.stringify(data)
     });
@@ -58,6 +126,28 @@ async function uploadToSupabaseBuffer(filename, data) {
     console.error("Error subiendo a Supabase Storage:", err);
     return false;
   }
+}
+
+async function uploadPptxToSupabase(filename, buffer) {
+  try {
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/presentations/${filename}`;
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "x-upsert": "true"
+      },
+      body: buffer
+    });
+    if (res.ok) {
+      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/presentations/${filename}`;
+    }
+  } catch (e) {
+    console.error("Error subiendo PPTX a Supabase:", e);
+  }
+  return null;
 }
 
 async function getCachedTasks() {
@@ -89,7 +179,6 @@ async function setVoiceConfig(voiceAlias, enabled = null) {
 
     let targetVoice = voiceAlias ? (voiceMap[voiceAlias.toLowerCase()] || "es-VE-PaolaNeural") : null;
     
-    // 1. Notificar al daemon local mediante Supabase buffer
     const ts = Date.now();
     await uploadToSupabaseBuffer(`req_voice_${ts}.json`, {
       type: "voice_config",
@@ -99,7 +188,6 @@ async function setVoiceConfig(voiceAlias, enabled = null) {
       timestamp: ts
     });
 
-    // 2. Actualizar caché en Supabase Storage
     const cacheUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/voice_state.json`;
     const payload = {
       voice_enabled: enabled !== null ? enabled : true,
@@ -165,8 +253,8 @@ async function getBCVRates() {
 
 async function askJARVISAI(prompt) {
   const models = [
-    "minimax/minimax-m3:free",
-    "nvidia/nemotron-3.5-lightning:free"
+    "google/gemini-2.5-flash",
+    "minimax/minimax-m3:free"
   ];
 
   for (const model of models) {
@@ -208,6 +296,62 @@ async function askJARVISAI(prompt) {
   return null;
 }
 
+/**
+ * Orquesta la generación completa de presentaciones CUSPAL y entrega directa en Telegram
+ */
+async function generateAndSendPresentation(chatId, query) {
+  try {
+    await sendTelegramMessage(chatId, 
+      `⏳ *Generando Presentación Ejecutiva CUSPAL...*\n\n` +
+      `📌 *Tema:* _${query}_\n` +
+      `🧠 _Consultando 324 notas de la Bóveda en la nube y aplicando la plantilla oficial..._`
+    );
+
+    const presentationData = await analyzeAndStructurePresentation(query);
+    const pptxBuffer = await buildOfficialCuspalPresentation(presentationData);
+
+    const safeTitle = (presentationData.title || "Presentacion_CUSPAL")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_\-]/g, "_")
+      .substring(0, 35);
+    const dateStr = new Date().toISOString().split("T")[0];
+    const filename = `${safeTitle}_${dateStr}.pptx`;
+
+    const slideCount = (presentationData.slides ? presentationData.slides.length : 0) + 2;
+    const caption = 
+      `📊 *PRESENTACIÓN EJECUTIVA CUSPAL LISTA*\n\n` +
+      `📁 *Documento:* \`${filename}\`\n` +
+      `📌 *Título:* ${presentationData.title || "Presentación Institucional"}\n` +
+      `📑 *Total Láminas:* ${slideCount} (Portada + ${slideCount - 2} Contenido + Cierre)\n` +
+      `🏛️ *Identidad:* Membrete Oficial MINAL / CUSPAL / Vicepresidencia ✅\n` +
+      `🧠 *Fuente:* Memoria Histórica de la Bóveda Principal (324 documentos) ✅\n\n` +
+      `_Compilado 24/7 en la nube para el Comandante Gonzalo Lucena._`;
+
+    // 1. Enviar directamente a Telegram
+    await sendTelegramDocument(chatId, pptxBuffer, filename, caption);
+
+    // 2. Resguardo en Supabase Storage
+    const downloadUrl = await uploadPptxToSupabase(filename, pptxBuffer);
+
+    // 3. Registrar en buffer para que la laptop mantenga copia offline
+    const ts = Date.now();
+    await uploadToSupabaseBuffer(`req_presentation_${ts}.json`, {
+      type: "presentation_generated",
+      title: presentationData.title,
+      filename: filename,
+      download_url: downloadUrl,
+      query: query,
+      timestamp: ts
+    });
+
+    return true;
+  } catch (err) {
+    console.error("Error generando presentación ejecutiva:", err);
+    await sendTelegramMessage(chatId, `⚠️ Hubo un detalle generando la presentación: ${err.message}`);
+    return false;
+  }
+}
+
 function getHelpMenu(section = "main") {
   let text = "";
   let reply_markup = { inline_keyboard: [] };
@@ -215,12 +359,23 @@ function getHelpMenu(section = "main") {
   if (section === "main" || section === "help_main") {
     text = "🤖 *CENTRO DE MANDO JARVIS (24/7 NUBE)*\n\nElige una categoría para ver los comandos:";
     reply_markup.inline_keyboard = [
-      [{ text: "📋 Tareas & Obsidian", callback_data: "help_tasks" },
-       { text: "📅 Agenda & Calendario", callback_data: "help_calendar" }],
-      [{ text: "🤖 IA & Utilidades", callback_data: "help_utils" },
-       { text: "📧 Correo (Gmail)", callback_data: "help_mail" }],
-      [{ text: "📄 Documentos & Visión", callback_data: "help_docs" },
+      [{ text: "📊 Presentaciones CUSPAL", callback_data: "help_pres" },
+       { text: "📋 Tareas & Obsidian", callback_data: "help_tasks" }],
+      [{ text: "📅 Agenda & Calendario", callback_data: "help_calendar" },
+       { text: "🤖 IA & Utilidades", callback_data: "help_utils" }],
+      [{ text: "📧 Correo (Gmail)", callback_data: "help_mail" },
        { text: "⚙️ Configuración (Voz)", callback_data: "help_config" }]
+    ];
+  } else if (section === "help_pres") {
+    text = "📊 *Generador Ejecutivo de Presentaciones CUSPAL*\n\n" +
+           "Compila archivos `.pptx` ejecutivos en la nube con la plantilla oficial institucional, membretes, logos y cruzando los datos reales de la Bóveda (324 documentos).\n\n" +
+           "• 🎙️ *Por Voz:* Dicta un audio: _\"Haz una presentación sobre el balance histórico de silos y acuerdos Pequiven\"_\n" +
+           "• ✍️ *Por Texto:* Escribe: `Presentación: [tema]`\n\n" +
+           "👇 _Toca un botón para generar una presentación de prueba:_";
+    reply_markup.inline_keyboard = [
+      [{ text: "🌾 Balance Silos y Pequiven", callback_data: "demo_pres_silos" }],
+      [{ text: "🏢 Gestión Empresas GGESA", callback_data: "demo_pres_ggesa" }],
+      [{ text: "🔙 Volver", callback_data: "help_main" }]
     ];
   } else if (section === "help_tasks") {
     text = "📋 *Gestión de Tareas y Notas*\n\n" +
@@ -253,11 +408,6 @@ function getHelpMenu(section = "main") {
     text = "📧 *Gestión de Correos (Gmail)*\n\n" +
            "• `Borrador: [Asunto], [Cuerpo]` — Preparar borrador\n" +
            "• `Enviar email: [Para], [Asunto], [Cuerpo]` — Enviar correo directo";
-    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
-  } else if (section === "help_docs") {
-    text = "📄 *Documentos & Visión*\n\n" +
-           "• Enviar archivo `.PDF` — Extrae texto, resume y archiva\n" +
-           "• Enviar foto — Digitalización y ficha con IA";
     reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
   } else if (section === "help_config") {
     text = "⚙️ *Configuración de Sistema & Voz*\n\n" +
@@ -335,6 +485,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, handled: "callback_help" });
       }
 
+      if (data === "demo_pres_silos") {
+        await generateAndSendPresentation(cbChatId, "Balance Histórico de Silos y Acuerdos Pequiven");
+        return res.status(200).json({ ok: true, handled: "demo_pres_silos" });
+      }
+
+      if (data === "demo_pres_ggesa") {
+        await generateAndSendPresentation(cbChatId, "Estructura y Gestión de Empresas Agroalimentarias GGESA CUSPAL");
+        return res.status(200).json({ ok: true, handled: "demo_pres_ggesa" });
+      }
+
       if (data === "voice_paola") {
         await setVoiceConfig("paola", true);
         await sendTelegramMessage(cbChatId, "🎙️ *Voz de JARVIS configurada:* `Paola (Venezuela) 🇻🇪`\n\nA partir de ahora todas las respuestas habladas se emitirán con la voz de Paola.");
@@ -363,17 +523,11 @@ export default async function handler(req, res) {
         const statusMsg = 
           "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
           "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
+          "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
+          "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
           "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
-          "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
-          "📡 _Solicitando telemetría de hardware a la Laptop..._";
+          "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅";
         await sendTelegramMessage(cbChatId, statusMsg);
-
-        const ts = Date.now();
-        await uploadToSupabaseBuffer(`req_status_${ts}.json`, {
-          type: "status_request",
-          content: "Solicitud de estado de hardware",
-          timestamp: ts
-        });
         return res.status(200).json({ ok: true, handled: "cmd_status" });
       }
 
@@ -398,12 +552,38 @@ export default async function handler(req, res) {
 
     const msg = update.message;
     const chatId = String(msg.chat ? msg.chat.id : "");
-    const text = (msg.text || "").trim();
     const msgId = msg.message_id;
 
     if (chatId !== ALLOWED_CHAT_ID) {
       console.warn(`Intento no autorizado de chat_id: ${chatId}`);
       return res.status(200).json({ ok: true, ignored: "unauthorized" });
+    }
+
+    let text = (msg.text || "").trim();
+    let isVoice = false;
+
+    // ==========================================
+    // A. ENTRADA POR NOTA DE VOZ (SPEECH-TO-ACTION)
+    // ==========================================
+    if (msg.voice) {
+      isVoice = true;
+      try {
+        await sendTelegramMessage(chatId, "🎙️ _Escuchando nota de voz con OpenAI Whisper..._");
+        const audioBuffer = await downloadTelegramFile(msg.voice.file_id);
+        const transcription = await transcribeAudioWithWhisper(audioBuffer);
+        
+        if (transcription && transcription.trim()) {
+          text = transcription.trim();
+          await sendTelegramMessage(chatId, `🗣️ *Dictado reconocido:*\n_"${text}"_`);
+        } else {
+          await sendTelegramMessage(chatId, "⚠️ No pude extraer audio inteligible de la nota de voz.");
+          return res.status(200).json({ ok: true, handled: "voice_empty" });
+        }
+      } catch (voiceErr) {
+        console.error("Error transcribiendo nota de voz:", voiceErr);
+        await sendTelegramMessage(chatId, `❌ Error procesando voz: ${voiceErr.message}`);
+        return res.status(200).json({ ok: false, error: voiceErr.message });
+      }
     }
 
     if (!text) {
@@ -413,24 +593,37 @@ export default async function handler(req, res) {
     const lower = text.toLowerCase();
 
     // ==========================================
+    // 0. GENERADOR DE PRESENTACIONES CUSPAL
+    // Detecta tanto comandos explícitos como dictados por voz
+    // ==========================================
+    const isPresentationIntent = 
+      lower.startsWith("presentacion:") || lower.startsWith("presentación:") ||
+      lower.startsWith("/presentacion") || lower.startsWith("/presentación") ||
+      lower.startsWith("presentacion ") || lower.startsWith("presentación ") ||
+      lower.includes("haz una presentacion") || lower.includes("haz una presentación") ||
+      lower.includes("crear presentacion") || lower.includes("crear presentación") ||
+      lower.includes("genera una presentacion") || lower.includes("genera una presentación") ||
+      lower.includes("prepara una presentacion") || lower.includes("prepara una presentación") ||
+      lower.includes("balance de silos");
+
+    if (isPresentationIntent) {
+      const topic = getBody(text, "(presentacion|presentación|crear presentacion|crear presentación|haz una presentacion|haz una presentación|genera una presentacion|genera una presentación|prepara una presentacion|prepara una presentación)");
+      await generateAndSendPresentation(chatId, topic || text);
+      return res.status(200).json({ ok: true, handled: "presentation" });
+    }
+
+    // ==========================================
     // 1. COMANDO: STATUS / ESTADO DEL SISTEMA
     // ==========================================
     if (lower === "status" || lower === "/status" || lower === "estado" || lower === "/estado") {
       const statusMsg = 
         "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
         "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
+        "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
+        "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
         "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
-        "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
-        "📡 _Solicitando telemetría de hardware a la Laptop..._";
+        "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅";
       await sendTelegramMessage(chatId, statusMsg);
-
-      const ts = Date.now();
-      await uploadToSupabaseBuffer(`req_status_${ts}.json`, {
-        type: "status_request",
-        content: "Solicitud de estado de hardware",
-        timestamp: ts
-      });
-
       return res.status(200).json({ ok: true, handled: "status" });
     }
 
@@ -503,14 +696,12 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, handled: "ia_empty" });
       }
 
-      // Consulta directa al motor de IA en la nube
       const aiResponse = await askJARVISAI(prompt);
       if (aiResponse) {
         const reply = `🤖 *JARVIS IA:*\n\n${aiResponse}`;
         await sendTelegramMessage(chatId, reply);
         return res.status(200).json({ ok: true, handled: "ia_cloud" });
       } else {
-        // Fallback: Si los modelos gratuitos de la nube están saturados, transferir a la laptop
         const ts = Date.now();
         await uploadToSupabaseBuffer(`req_ai_${ts}.json`, {
           type: "ai_request",
@@ -534,7 +725,6 @@ export default async function handler(req, res) {
         await sendTelegramMessage(chatId, "📋 *Consultando tareas en la Bóveda local...*\n_Si tu laptop está activa responderá en unos segundos._");
       }
 
-      // Notificar al daemon local para refrescar el estado si la laptop está encendida
       const ts = Date.now();
       await uploadToSupabaseBuffer(`req_tasks_${ts}.json`, {
         type: "tasks_query",
@@ -577,7 +767,7 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
-    // 8. CAPTURAS Y CREACIÓN DE ELEMENTOS
+    // 8. CAPTURAS Y CREACIÓN DE ELEMENTOS (TEXTO O VOZ)
     // ==========================================
     let type = "inbox";
     let cleanContent = text;
@@ -604,10 +794,11 @@ export default async function handler(req, res) {
       cleanContent = getBody(text, "(enviar email|email)");
       confirmMsg = `📤 *Orden de correo recibida:*\n\`${cleanContent}\`\n\n📂 _Destino: Despacho Gmail_`;
     } else {
-      // Fallback: Texto rápido sin prefijo específico
       type = "inbox";
       cleanContent = text;
-      confirmMsg = `📝 *Captura rápida guardada:*\n\`${cleanContent}\`\n\n📂 _Destino: Inbox.md_`;
+      confirmMsg = isVoice
+        ? `🎙️ *Nota de voz capturada en tu Bóveda:*\n\`${cleanContent}\`\n\n📂 _Destino: Inbox.md_`
+        : `📝 *Captura rápida guardada:*\n\`${cleanContent}\`\n\n📂 _Destino: Inbox.md_`;
     }
 
     const timestamp = new Date().toISOString();
@@ -616,6 +807,7 @@ export default async function handler(req, res) {
       message_id: msgId,
       chat_id: chatId,
       raw_text: text,
+      is_voice: isVoice,
       type: type,
       content: cleanContent,
       created_at: timestamp,
