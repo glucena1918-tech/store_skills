@@ -5,6 +5,7 @@
 import { generateWeatherReport } from "./weather_cron.js";
 import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
 import { sendPaolaVoiceNote } from "./tts.js";
+import { createGmailDraftCloud, sendGmailEmailCloud } from "./gmail.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -443,6 +444,90 @@ function getBody(src, keyword) {
   return src.replace(new RegExp(`^\\/?${keyword}\\s*`, "i"), "").trim();
 }
 
+export function parseDraftIntent(text) {
+  if (!text) return null;
+  const lower = text.toLowerCase().trim();
+
+  // Si es intención de presentación, no interferir
+  if (
+    lower.includes("presentacion") || lower.includes("presentación") ||
+    lower.includes("diapositiva") || lower.includes("diapositivas") ||
+    lower.includes("powerpoint") || lower.includes("pptx") ||
+    lower.includes("lámina") || lower.includes("lamina") ||
+    lower.includes("láminas") || lower.includes("laminas") ||
+    lower.includes("slides")
+  ) {
+    return null;
+  }
+
+  const isDraftMatch =
+    lower.startsWith("borrador:") ||
+    lower.startsWith("/borrador") ||
+    lower.startsWith("draft:") ||
+    lower.startsWith("borrador de correo") ||
+    lower.startsWith("borrador de email") ||
+    lower.startsWith("prepara borrador") ||
+    lower.startsWith("prepara un borrador") ||
+    lower.startsWith("crear borrador") ||
+    lower.startsWith("crea un borrador") ||
+    lower.startsWith("redactar borrador") ||
+    lower.startsWith("redacta un borrador") ||
+    lower.includes("prepara borrador") ||
+    lower.includes("crea un borrador de correo") ||
+    lower.includes("prepara un borrador de correo") ||
+    (lower.includes("borrador") && (lower.includes("asunto") || lower.includes("cuerpo")));
+
+  if (!isDraftMatch) return null;
+
+  let subject = "";
+  let body = "";
+  let to = "";
+
+  // 1. Destinatario / Para
+  const toMatch = text.match(/(?:destinatario[:\.]?\s*|para:\s*)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:,|\.|\n|asunto|cuerpo|$)/i);
+  if (toMatch) {
+    to = toMatch[1].trim();
+  }
+
+  // 2. Asunto [...] Cuerpo [...]
+  const asuntoCuerpoRegex = /(?:asunto[:\.]?\s*)(.+?)(?:\.|\,|\n)?\s+(?:cuerpo[:\.]?\s*)(.+)/i;
+  const matchAC = text.match(asuntoCuerpoRegex);
+
+  if (matchAC) {
+    subject = matchAC[1].trim();
+    body = matchAC[2].trim();
+    body = body.replace(/[\.\s]*(?:prepara borrador|crear borrador|crea el borrador|guardar borrador|enviar borrador|listo)[\.\s]*$/i, "").trim();
+  } else if (text.includes("|")) {
+    const clean = text.replace(/^(?:borrador de (?:correo|email)|borrador[:\s]*|\/borrador\s*)/i, "").trim();
+    const parts = clean.split("|");
+    subject = parts[0].trim();
+    body = parts.slice(1).join("|").trim();
+  } else if (text.includes(",")) {
+    const clean = text.replace(/^(?:borrador de (?:correo|email)|borrador[:\s]*|\/borrador\s*)/i, "").trim();
+    const parts = clean.split(",");
+    subject = parts[0].trim();
+    body = parts.slice(1).join(",").trim();
+  } else {
+    const clean = text.replace(/^(?:borrador de (?:correo|email)|prepara (?:un )?borrador (?:de correo|de email)?|crea(?:r)? (?:un )?borrador (?:de correo|de email)?|borrador[:\s]*|\/borrador\s*)/i, "").trim();
+    if (clean.includes(".")) {
+      const dotParts = clean.split(".");
+      subject = dotParts[0].trim();
+      body = dotParts.slice(1).join(".").trim();
+    } else {
+      subject = clean.length > 50 ? clean.substring(0, 47) + "..." : clean;
+      body = clean;
+    }
+  }
+
+  // Limpieza de Asunto
+  subject = subject.replace(/^(?:de correo|de email|asunto)[\.\s:]*/i, "").trim();
+  subject = subject.replace(/\s+y\s*$/i, "").trim();
+  if (!subject) subject = "Borrador sin asunto";
+  if (!body) body = subject;
+
+  return { subject, body, to };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
@@ -599,7 +684,78 @@ export default async function handler(req, res) {
     const lower = text.toLowerCase();
 
     // ==========================================
-    // 0. GENERADOR DE PRESENTACIONES EJECUTIVAS
+    // 0. INTENCIÓN DE BORRADOR DE GMAIL (NUBE 24/7)
+    // Detección semántica inteligente para notas de voz y texto
+    // ==========================================
+    const draftIntent = parseDraftIntent(text);
+    if (draftIntent) {
+      const { subject, body, to } = draftIntent;
+      let cloudRes = { ok: false };
+      try {
+        cloudRes = await createGmailDraftCloud(subject, body, to);
+      } catch (errDraft) {
+        console.error("Error en createGmailDraftCloud:", errDraft);
+      }
+
+      const alreadyCreated = cloudRes.ok;
+      let confirmMsg = "";
+
+      if (alreadyCreated) {
+        confirmMsg = 
+          `📧 *Borrador creado en Gmail:*\n\n` +
+          `📌 *Asunto:* \`${subject}\`\n` +
+          `📝 *Cuerpo:* \`${body.length > 250 ? body.substring(0, 247) + "..." : body}\`\n` +
+          (to ? `👤 *Para:* \`${to}\`\n` : "") +
+          `🆔 _ID:_ \`${cloudRes.draftId}\`\n\n` +
+          `☁️ _Creado directamente en la nube 24/7 (sin esperar por tu laptop)_\n` +
+          `📂 _Destino: Gmail (Borradores)_`;
+      } else {
+        confirmMsg = 
+          `📧 *Borrador preparado en tu Bóveda:*\n\n` +
+          `📌 *Asunto:* \`${subject}\`\n` +
+          `📝 *Cuerpo:* \`${body.length > 250 ? body.substring(0, 247) + "..." : body}\`\n\n` +
+          `⏳ _Se sincronizará con tu Gmail en cuanto tu laptop se active._\n` +
+          `📂 _Destino: Gmail (Borradores)_`;
+      }
+
+      const timestamp = new Date().toISOString();
+      const payload = {
+        id: `draft_${Date.now()}_${msgId}`,
+        message_id: msgId,
+        chat_id: chatId,
+        raw_text: text,
+        is_voice: isVoice,
+        type: "draft",
+        already_created: alreadyCreated,
+        draft_id: alreadyCreated ? cloudRes.draftId : null,
+        subject: subject,
+        body: body,
+        to: to,
+        content: `${subject} | ${body}`,
+        created_at: timestamp,
+        source: "telegram_cloud_gateway"
+      };
+
+      const filename = `${Date.now()}_${msgId}.json`;
+      const saved = await uploadToSupabaseBuffer(filename, payload);
+
+      if (saved) {
+        await sendTelegramMessage(chatId, confirmMsg);
+        if (isVoice) {
+          const spokenText = alreadyCreated
+            ? `Borrador creado con éxito en tu Gmail con el asunto: ${subject}.`
+            : `He preparado el borrador en tu Bóveda con el asunto: ${subject}.`;
+          await sendPaolaVoiceNote(chatId, spokenText, "🎙️ *Voz de Paola (Confirmación de Borrador)*");
+        }
+      } else {
+        await sendTelegramMessage(chatId, "⚠️ Hubo un detalle temporal guardando en la nube. Reintenta en unos instantes.");
+      }
+
+      return res.status(200).json({ ok: true, handled: "draft", already_created: alreadyCreated });
+    }
+
+    // ==========================================
+    // 0.5 GENERADOR DE PRESENTACIONES EJECUTIVAS
     // Detecta peticiones directas, por texto o por notas de voz (speech-to-action)
     // ==========================================
     const isExplicitNoteOrTask = 
@@ -640,6 +796,7 @@ export default async function handler(req, res) {
         "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
         "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
         "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
+        "📧 *Gestor Gmail:* Creación de Borradores 24/7 en la Nube ✅\n" +
         "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
         "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
         "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅";
