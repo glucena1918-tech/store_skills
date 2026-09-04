@@ -14,7 +14,7 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || Buffer.from("c2stb3
 
 // Plantillas Oficiales CUSPAL alojadas en la nube
 const BG_COVER_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_cover.jpg";
-const BG_CONTENT_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_content.jpg";
+const BG_CONTENT_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_content.jpg?v=clean_v3";
 const BG_CLOSING_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/assets/template_closing.jpg";
 const MEMORY_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co/storage/v1/object/public/nexus_buffer/cache/vault_historical_memory.json";
 
