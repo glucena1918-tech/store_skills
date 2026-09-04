@@ -6,6 +6,7 @@ import { generateWeatherReport } from "./weather_cron.js";
 import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
 import { sendPaolaVoiceNote } from "./tts.js";
 import { createGmailDraftCloud, sendGmailEmailCloud } from "./gmail.js";
+import { parseMeetingIntent, processMeetingDebriefFull } from "./meeting_auditor.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -755,10 +756,27 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
+    // 0.2 AUDITOR DE REUNIONES Y MINUTA EJECUTIVA (60 SEGUNDOS)
+    // Speech-to-Action: Detecta audios o reportes de reuniones y genera Minuta Oficial .docx
+    // ==========================================
+    if (parseMeetingIntent(text)) {
+      await processMeetingDebriefFull({
+        text,
+        chatId,
+        msgId,
+        isVoice,
+        sendTelegramMessage,
+        sendTelegramDocument
+      });
+      return res.status(200).json({ ok: true, handled: "meeting_minuta" });
+    }
+
+    // ==========================================
     // 0.5 GENERADOR DE PRESENTACIONES EJECUTIVAS
     // Detecta peticiones directas, por texto o por notas de voz (speech-to-action)
     // ==========================================
     const isExplicitNoteOrTask = 
+      parseMeetingIntent(text) ||
       lower.startsWith("tarea:") || lower.startsWith("/tarea") ||
       lower.startsWith("nota:") || lower.startsWith("/nota") ||
       lower.startsWith("agenda:") || lower.startsWith("/agenda") ||
@@ -796,6 +814,7 @@ export default async function handler(req, res) {
         "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
         "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
         "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
+        "🎙️ *Auditor de Reuniones:* Minutas Oficiales .docx + Compromisos en 60s ✅\n" +
         "📧 *Gestor Gmail:* Creación de Borradores 24/7 en la Nube ✅\n" +
         "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
         "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +

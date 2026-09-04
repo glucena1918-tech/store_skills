@@ -141,3 +141,47 @@ export async function sendGmailEmailCloud(to, subject, body) {
     return { ok: false, error: e.message };
   }
 }
+
+/**
+ * Crea un evento en Google Calendar directamente desde la nube 24/7
+ */
+export async function createCalendarEventCloud(eventData) {
+  try {
+    const token = await getGoogleAccessToken();
+    const dateStr = eventData.date || new Date().toISOString().split("T")[0];
+    const startTime = eventData.start_time || "10:00";
+    const endTime = eventData.end_time || "11:00";
+
+    const startIso = `${dateStr}T${startTime}:00-04:00`;
+    const endIso = `${dateStr}T${endTime}:00-04:00`;
+
+    const payload = {
+      summary: eventData.summary || eventData.title || "Reunión de Trabajo CUSPAL",
+      description: eventData.description || "Agendado automáticamente por JARVIS Cloud Gateway",
+      start: { dateTime: startIso, timeZone: "America/Caracas" },
+      end: { dateTime: endIso, timeZone: "America/Caracas" }
+    };
+
+    const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, id: data.id, link: data.htmlLink };
+    } else {
+      const errTxt = await res.text();
+      console.error("Error en Google Calendar API:", errTxt);
+      return { ok: false, error: errTxt };
+    }
+  } catch (e) {
+    console.error("Excepción creando evento en Calendar:", e);
+    return { ok: false, error: e.message };
+  }
+}
+
