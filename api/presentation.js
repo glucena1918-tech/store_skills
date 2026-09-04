@@ -373,19 +373,20 @@ export async function buildOfficialCuspalPresentation(data) {
     // B. Si tiene Lista de Viñetas / Párrafos
     else if (Array.isArray(slideData.items) && slideData.items.length > 0) {
       const textBlock = [];
-      slideData.items.forEach((item) => {
-        const runs = parseBoldRuns(item, 13.5, COLOR_DARK_TEXT);
+      slideData.items.forEach((item, itemIdx) => {
+        const runs = parseBoldRuns(item, 14, COLOR_DARK_TEXT);
         runs.forEach((r, rIndex) => {
           textBlock.push({
             text: r.text,
             options: {
+              breakLine: itemIdx > 0 && rIndex === 0,
               bullet: rIndex === 0 ? { type: "bullet", code: "2022" } : false,
               bold: r.options.bold,
               fontSize: r.options.fontSize,
               color: r.options.color,
               fontFace: "Calibri",
-              lineSpacingMultiple: 1.3,
-              paraSpaceAfter: 14
+              lineSpacingMultiple: 1.35,
+              paraSpaceAfter: 16
             }
           });
         });
@@ -520,7 +521,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
-      version: "2.1.0-margins-fixed",
+      version: "2.2.0-perfect-bullets",
       layout: "16.0x9.0",
       service: "JARVIS CUSPAL Intelligent Presentation Analyst 24/7",
       docs: "Envía un POST con { raw_text: 'tema' } o { presentation: { title, slides } } para compilar y despachar el PPTX oficial.",
