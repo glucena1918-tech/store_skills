@@ -379,7 +379,7 @@ export async function buildOfficialCuspalPresentation(data) {
           textBlock.push({
             text: r.text,
             options: {
-              breakLine: itemIdx > 0 && rIndex === 0,
+              breakLine: rIndex === runs.length - 1,
               bullet: rIndex === 0 ? { type: "bullet", code: "2022" } : false,
               bold: r.options.bold,
               fontSize: r.options.fontSize,
@@ -521,7 +521,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
-      version: "2.2.0-perfect-bullets",
+      version: "2.3.0-bullet-runs-fixed",
       layout: "16.0x9.0",
       service: "JARVIS CUSPAL Intelligent Presentation Analyst 24/7",
       docs: "Envía un POST con { raw_text: 'tema' } o { presentation: { title, slides } } para compilar y despachar el PPTX oficial.",
