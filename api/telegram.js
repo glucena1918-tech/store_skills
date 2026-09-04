@@ -77,6 +77,48 @@ async function getCachedTasks() {
   return null;
 }
 
+async function setVoiceConfig(voiceAlias, enabled = null) {
+  try {
+    const voiceMap = {
+      "paola": "es-VE-PaolaNeural",
+      "sebastian": "es-VE-SebastianNeural",
+      "david": "es-VE-SebastianNeural"
+    };
+
+    let targetVoice = voiceAlias ? (voiceMap[voiceAlias.toLowerCase()] || "es-VE-PaolaNeural") : null;
+    
+    // 1. Notificar al daemon local mediante Supabase buffer
+    const ts = Date.now();
+    await uploadToSupabaseBuffer(`req_voice_${ts}.json`, {
+      type: "voice_config",
+      action: voiceAlias ? "set_voice" : (enabled ? "enable" : "disable"),
+      voice: voiceAlias || "paola",
+      enabled: enabled,
+      timestamp: ts
+    });
+
+    // 2. Actualizar caché en Supabase Storage
+    const cacheUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/voice_state.json`;
+    const payload = {
+      voice_enabled: enabled !== null ? enabled : true,
+      voice: targetVoice || "es-VE-PaolaNeural",
+      updated_at: new Date().toISOString()
+    };
+
+    await fetch(cacheUrl, {
+      method: "PUT",
+      headers: {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("Error guardando configuración de voz:", err);
+  }
+}
+
 async function getBCVRates() {
   try {
     const [usdRes, eurRes] = await Promise.all([
@@ -176,7 +218,7 @@ function getHelpMenu(section = "main") {
       [{ text: "🤖 IA & Utilidades", callback_data: "help_utils" },
        { text: "📧 Correo (Gmail)", callback_data: "help_mail" }],
       [{ text: "📄 Documentos & Visión", callback_data: "help_docs" },
-       { text: "⚙️ Configuración", callback_data: "help_config" }]
+       { text: "⚙️ Configuración (Voz)", callback_data: "help_config" }]
     ];
   } else if (section === "help_tasks") {
     text = "📋 *Gestión de Tareas y Notas*\n\n" +
@@ -209,10 +251,21 @@ function getHelpMenu(section = "main") {
            "• Enviar foto — Digitalización y ficha con IA";
     reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
   } else if (section === "help_config") {
-    text = "⚙️ *Configuración de Sistema*\n\n" +
-           "• `Status` — Ver telemetría y conexión local\n" +
-           "• `Voz on` / `Voz off` — Respuestas habladas";
-    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+    text = "⚙️ *Configuración de Sistema & Voz*\n\n" +
+           "Configura las respuestas habladas y la voz oficial de JARVIS:\n\n" +
+           "• 👩 `Voz Paola` — Configurar voz femenina natural (Venezuela 🇻🇪)\n" +
+           "• 👨 `Voz David` — Configurar voz masculina natural (Venezuela 🇻🇪)\n" +
+           "• 🔊 `Voz on` / `Voz off` — Activar o silenciar respuestas de voz\n" +
+           "• ⚡ `Status` — Diagnóstico del sistema y telemetría\n\n" +
+           "👇 *Toca una opción para cambiar la configuración al instante:*";
+    reply_markup.inline_keyboard = [
+      [{ text: "👩 Voz Paola 🇻🇪", callback_data: "voice_paola" },
+       { text: "👨 Voz David 🇻🇪", callback_data: "voice_david" }],
+      [{ text: "🔊 Voz ON", callback_data: "voice_on" },
+       { text: "🔇 Voz OFF", callback_data: "voice_off" }],
+      [{ text: "⚡ Estado (Status)", callback_data: "cmd_status" }],
+      [{ text: "🔙 Volver", callback_data: "help_main" }]
+    ];
   }
 
   return { text, reply_markup };
@@ -270,6 +323,49 @@ export default async function handler(req, res) {
             reply_markup: reply_markup
           })
         });
+        return res.status(200).json({ ok: true, handled: "callback_help" });
+      }
+
+      if (data === "voice_paola") {
+        await setVoiceConfig("paola", true);
+        await sendTelegramMessage(cbChatId, "🎙️ *Voz de JARVIS configurada:* `Paola (Venezuela) 🇻🇪`\n\nA partir de ahora todas las respuestas habladas se emitirán con la voz de Paola.");
+        return res.status(200).json({ ok: true, handled: "voice_paola" });
+      }
+
+      if (data === "voice_david") {
+        await setVoiceConfig("sebastian", true);
+        await sendTelegramMessage(cbChatId, "🎙️ *Voz de JARVIS configurada:* `David / Sebastián (Venezuela) 🇻🇪`\n\nA partir de ahora todas las respuestas habladas se emitirán con la voz de David.");
+        return res.status(200).json({ ok: true, handled: "voice_david" });
+      }
+
+      if (data === "voice_on") {
+        await setVoiceConfig(null, true);
+        await sendTelegramMessage(cbChatId, "🔊 *Modo Voz Activado (Manos Libres)*\n\nJARVIS responderá a tus acciones con notas de voz.");
+        return res.status(200).json({ ok: true, handled: "voice_on" });
+      }
+
+      if (data === "voice_off") {
+        await setVoiceConfig(null, false);
+        await sendTelegramMessage(cbChatId, "🔇 *Modo Voz Desactivado*\n\nLas respuestas se emitirán únicamente en texto.");
+        return res.status(200).json({ ok: true, handled: "voice_off" });
+      }
+
+      if (data === "cmd_status") {
+        const statusMsg = 
+          "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
+          "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
+          "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
+          "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
+          "📡 _Solicitando telemetría de hardware a la Laptop..._";
+        await sendTelegramMessage(cbChatId, statusMsg);
+
+        const ts = Date.now();
+        await uploadToSupabaseBuffer(`req_status_${ts}.json`, {
+          type: "status_request",
+          content: "Solicitud de estado de hardware",
+          timestamp: ts
+        });
+        return res.status(200).json({ ok: true, handled: "cmd_status" });
       }
 
       return res.status(200).json({ ok: true, handled: "callback_query" });
@@ -324,6 +420,34 @@ export default async function handler(req, res) {
       const { text: helpMsg, reply_markup: rm } = getHelpMenu("main");
       await sendTelegramMessage(chatId, helpMsg, rm);
       return res.status(200).json({ ok: true, handled: "help" });
+    }
+
+    // ==========================================
+    // 2.5 COMANDOS DE VOZ (PAOLA / DAVID / ON / OFF)
+    // ==========================================
+    if (lower === "voz paola" || lower === "/voz paola" || lower === "cambiar voz paola" || lower === "voz de paola") {
+      await setVoiceConfig("paola", true);
+      await sendTelegramMessage(chatId, "🎙️ *Voz de JARVIS configurada:* `Paola (Venezuela) 🇻🇪`\n\nA partir de ahora todas las respuestas habladas se emitirán con la voz femenina de Paola.");
+      return res.status(200).json({ ok: true, handled: "voice_paola" });
+    }
+
+    if (lower === "voz david" || lower === "/voz david" || lower === "voz sebastian" || lower === "/voz sebastian" ||
+        lower === "cambiar voz david" || lower === "voz de david") {
+      await setVoiceConfig("sebastian", true);
+      await sendTelegramMessage(chatId, "🎙️ *Voz de JARVIS configurada:* `David / Sebastián (Venezuela) 🇻🇪`\n\nA partir de ahora todas las respuestas habladas se emitirán con la voz masculina de David.");
+      return res.status(200).json({ ok: true, handled: "voice_david" });
+    }
+
+    if (lower === "voz on" || lower === "/voz on" || lower === "modo voz on" || lower === "activar voz") {
+      await setVoiceConfig(null, true);
+      await sendTelegramMessage(chatId, "🔊 *Modo Voz Activado (Manos Libres)*\n\nJARVIS responderá a tus acciones con notas de voz.");
+      return res.status(200).json({ ok: true, handled: "voice_on" });
+    }
+
+    if (lower === "voz off" || lower === "/voz off" || lower === "modo voz off" || lower === "desactivar voz" || lower === "silencio") {
+      await setVoiceConfig(null, false);
+      await sendTelegramMessage(chatId, "🔇 *Modo Voz Desactivado*\n\nLas respuestas se emitirán únicamente en texto.");
+      return res.status(200).json({ ok: true, handled: "voice_off" });
     }
 
     // ==========================================
