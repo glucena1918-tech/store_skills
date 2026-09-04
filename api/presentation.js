@@ -522,7 +522,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
-      version: "2.3.0-bullet-runs-fixed",
+      version: "2.5.0-paola-voice-active",
       layout: "16.0x9.0",
       service: "JARVIS CUSPAL Intelligent Presentation Analyst 24/7",
       docs: "Envía un POST con { raw_text: 'tema' } o { presentation: { title, slides } } para compilar y despachar el PPTX oficial.",
