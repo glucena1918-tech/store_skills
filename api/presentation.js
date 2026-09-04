@@ -5,6 +5,7 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pptxgen = require("pptxgenjs");
+import { sendPaolaVoiceNote } from "./tts.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -577,6 +578,10 @@ export default async function handler(req, res) {
 
     const deliveredTg = await sendTelegramDocument(targetChatId, pptxBuffer, filename, caption);
 
+    // 5. Enviar nota de voz de Paola indicando la culminación y disponibilidad en Telegram
+    const spokenText = `Comandante Gonzalo, ha finalizado con éxito la elaboración de su presentación ejecutiva sobre ${presentationData.title || "el tema solicitado"}. El documento oficial ya se encuentra disponible aquí en su chat de Telegram para su revisión.`;
+    const voiceDelivered = await sendPaolaVoiceNote(targetChatId, spokenText, "🎙️ *Voz Oficial de Paola (Venezuela)*");
+
     return res.status(200).json({
       ok: true,
       status: "completed",
@@ -584,6 +589,7 @@ export default async function handler(req, res) {
       slides_count: slideCount,
       download_url: downloadUrl,
       delivered_telegram: deliveredTg,
+      delivered_voice: voiceDelivered,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

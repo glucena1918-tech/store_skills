@@ -4,6 +4,7 @@
 
 import { generateWeatherReport } from "./weather_cron.js";
 import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
+import { sendPaolaVoiceNote } from "./tts.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -328,8 +329,12 @@ async function generateAndSendPresentation(chatId, query) {
       `🧠 *Fuente:* Memoria Histórica de la Bóveda Principal (324 documentos) ✅\n\n` +
       `_Compilado 24/7 en la nube para el Comandante Gonzalo Lucena._`;
 
-    // 1. Enviar directamente a Telegram
+    // 1. Enviar directamente a Telegram el documento PPTX
     await sendTelegramDocument(chatId, pptxBuffer, filename, caption);
+
+    // 2. Enviar nota de voz de Paola indicando la culminación y disponibilidad
+    const spokenText = `Comandante Gonzalo, ha finalizado con éxito la elaboración de su presentación ejecutiva sobre ${presentationData.title || "el tema solicitado"}. El documento oficial ya se encuentra disponible aquí en su chat de Telegram para su revisión.`;
+    await sendPaolaVoiceNote(chatId, spokenText, "🎙️ *Voz Oficial de Paola (Venezuela)*");
 
     // 2. Resguardo en Supabase Storage
     const downloadUrl = await uploadPptxToSupabase(filename, pptxBuffer);
