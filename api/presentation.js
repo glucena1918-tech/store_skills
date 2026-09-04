@@ -241,7 +241,8 @@ function parseBoldRuns(text, baseSize = 13, baseColor = COLOR_DARK_TEXT) {
  */
 export async function buildOfficialCuspalPresentation(data) {
   const pres = new pptxgen();
-  pres.layout = "LAYOUT_16x9";
+  pres.defineLayout({ name: "CUSPAL_16_9", width: 16.0, height: 9.0 });
+  pres.layout = "CUSPAL_16_9";
   pres.title = data.title || "Presentación Institucional CUSPAL";
   pres.company = "CUSPAL / Ministerio del Poder Popular para la Alimentación";
 
@@ -263,15 +264,15 @@ export async function buildOfficialCuspalPresentation(data) {
   const slidePortada = pres.addSlide();
   slidePortada.background = { path: BG_COVER_URL };
 
-  // Título Principal Centrado
+  // Título Principal Centrado (ancho 13.0 pulgadas centrado entre x=1.5 y x=14.5)
   slidePortada.addText(title, {
-    x: 1.0,
-    y: 2.6,
-    w: 11.33,
-    h: 1.6,
+    x: 1.5,
+    y: 3.0,
+    w: 13.0,
+    h: 1.8,
     align: "center",
     fontFace: "Calibri",
-    fontSize: title.length > 55 ? 24 : 28,
+    fontSize: title.length > 50 ? 28 : 34,
     bold: true,
     color: COLOR_BLUE_PRIMARY,
     lineSpacingMultiple: 1.15
@@ -279,65 +280,66 @@ export async function buildOfficialCuspalPresentation(data) {
 
   // Subtítulo Centrado
   slidePortada.addText(subtitle, {
-    x: 1.0,
-    y: 4.3,
-    w: 11.33,
-    h: 0.8,
+    x: 1.5,
+    y: 5.0,
+    w: 13.0,
+    h: 1.0,
     align: "center",
     fontFace: "Calibri",
-    fontSize: 16,
-    color: COLOR_BLUE_PRIMARY
+    fontSize: 20,
+    color: COLOR_BLUE_SUBTITLE
   });
 
   // Fecha en el pie izquierdo
   slidePortada.addText(`Caracas, ${dateFormatted}`, {
-    x: 0.8,
-    y: 6.8,
-    w: 5.0,
-    h: 0.3,
+    x: 1.0,
+    y: 8.2,
+    w: 6.0,
+    h: 0.4,
     align: "left",
     fontFace: "Calibri",
-    fontSize: 9.5,
+    fontSize: 11,
     color: COLOR_GRAY_MUTED
   });
 
   // =========================================================================
   // LÁMINAS DE CONTENIDO (Image: template_content.jpg)
   // Incluye Logo Oficial CUSPAL + Subrayado VICEPRESIDENCIA superior derecho
+  // Margen izquierdo: 1.0", Ancho útil: 14.0", Margen derecho seguro: 1.0"
   // =========================================================================
   slides.forEach((slideData, idx) => {
     const s = pres.addSlide();
     s.background = { path: BG_CONTENT_URL };
 
-    // Título de la Lámina (posicionado a la izquierda, sin tocar el logo derecho)
+    // Título de la Lámina (posicionado a la izquierda, sin tocar el logo derecho en x >= 13.0)
     s.addText(slideData.title || `Lámina ${idx + 1}`, {
-      x: 0.8,
+      x: 1.0,
       y: 0.55,
-      w: 8.5,
-      h: 0.7,
+      w: 11.5,
+      h: 0.8,
       align: "left",
       fontFace: "Calibri",
-      fontSize: 22,
+      fontSize: 26,
       bold: true,
       color: COLOR_BLUE_PRIMARY
     });
 
-    let currentY = 1.25;
+    let currentY = 1.4;
 
     // Subtítulo o Eje Temático
     if (slideData.subtitle && slideData.subtitle.trim()) {
       s.addText(slideData.subtitle.trim(), {
-        x: 0.8,
+        x: 1.0,
         y: currentY,
-        w: 11.5,
-        h: 0.35,
+        w: 14.0,
+        h: 0.45,
         align: "left",
         fontFace: "Calibri",
-        fontSize: 13,
+        fontSize: 15,
         bold: true,
         color: COLOR_BLUE_SUBTITLE
       });
-      currentY += 0.45;
+      currentY += 0.6;
     }
 
     // A. Si tiene Tabla de Datos
@@ -349,7 +351,7 @@ export async function buildOfficialCuspalPresentation(data) {
             text: String(cell),
             options: {
               bold: isHeader,
-              fontSize: isHeader ? 11 : 10,
+              fontSize: isHeader ? 13 : 11.5,
               fontFace: "Calibri",
               color: isHeader ? "FFFFFF" : COLOR_DARK_TEXT,
               fill: { color: isHeader ? COLOR_BLUE_PRIMARY : (rIdx % 2 === 0 ? "FFFFFF" : COLOR_BG_ALT_ROW) },
@@ -361,9 +363,9 @@ export async function buildOfficialCuspalPresentation(data) {
       });
 
       s.addTable(rows, {
-        x: 0.8,
+        x: 1.0,
         y: currentY,
-        w: 11.7,
+        w: 14.0,
         border: { pt: 0.5, color: COLOR_BORDER_TABLE },
         autoPage: false
       });
@@ -372,7 +374,7 @@ export async function buildOfficialCuspalPresentation(data) {
     else if (Array.isArray(slideData.items) && slideData.items.length > 0) {
       const textBlock = [];
       slideData.items.forEach((item) => {
-        const runs = parseBoldRuns(item, 12.5, COLOR_DARK_TEXT);
+        const runs = parseBoldRuns(item, 13.5, COLOR_DARK_TEXT);
         runs.forEach((r, rIndex) => {
           textBlock.push({
             text: r.text,
@@ -382,18 +384,18 @@ export async function buildOfficialCuspalPresentation(data) {
               fontSize: r.options.fontSize,
               color: r.options.color,
               fontFace: "Calibri",
-              lineSpacingMultiple: 1.25,
-              paraSpaceAfter: 12
+              lineSpacingMultiple: 1.3,
+              paraSpaceAfter: 14
             }
           });
         });
       });
 
       s.addText(textBlock, {
-        x: 0.8,
+        x: 1.0,
         y: currentY,
-        w: 11.5,
-        h: 4.8,
+        w: 14.0,
+        h: 5.8,
         align: "left",
         valign: "top"
       });
@@ -401,35 +403,24 @@ export async function buildOfficialCuspalPresentation(data) {
 
     // Pie de página con número de lámina
     s.addText(`Lámina ${idx + 2} de ${slides.length + 2} • CUSPAL Gestión Estratégica`, {
-      x: 0.8,
-      y: 6.9,
-      w: 11.7,
-      h: 0.3,
+      x: 1.0,
+      y: 8.3,
+      w: 14.0,
+      h: 0.35,
       align: "right",
       fontFace: "Calibri",
-      fontSize: 8.5,
+      fontSize: 10,
       color: COLOR_GRAY_MUTED
     });
   });
 
   // =========================================================================
   // LÁMINA FINAL: CIERRE OFICIAL CUSPAL (Image: template_closing.jpg)
-  // Incluye "Gracias..." original y firma protocolar del Vicepresidente
+  // Incluye "Gracias..." original y membretes oficiales de la plantilla.
+  // NO se agrega ningún texto adicional para respetar estrictamente la plantilla original.
   // =========================================================================
   const slideCierre = pres.addSlide();
   slideCierre.background = { path: BG_CLOSING_URL };
-
-  slideCierre.addText("¡PRODUCIR ES VENCER!", {
-    x: 1.0,
-    y: 2.1,
-    w: 11.33,
-    h: 0.8,
-    align: "center",
-    fontFace: "Calibri",
-    fontSize: 26,
-    bold: true,
-    color: COLOR_BLUE_PRIMARY
-  });
 
   // Compilar Buffer de Node.js
   return await pres.write({ outputType: "nodebuffer" });
