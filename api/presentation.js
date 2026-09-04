@@ -471,12 +471,13 @@ async function uploadPptxToSupabase(filename, buffer) {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "cache-control": "0",
         "x-upsert": "true"
       },
       body: buffer
     });
     if (res.ok) {
-      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/presentations/${filename}`;
+      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/presentations/${filename}?t=${Date.now()}`;
     }
   } catch (e) {
     console.error("Error subiendo PPTX a Supabase:", e);
@@ -519,6 +520,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
       status: "online",
+      version: "2.1.0-margins-fixed",
+      layout: "16.0x9.0",
       service: "JARVIS CUSPAL Intelligent Presentation Analyst 24/7",
       docs: "Envía un POST con { raw_text: 'tema' } o { presentation: { title, slides } } para compilar y despachar el PPTX oficial.",
       timestamp: new Date().toISOString()

@@ -137,12 +137,13 @@ async function uploadPptxToSupabase(filename, buffer) {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
         "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "cache-control": "0",
         "x-upsert": "true"
       },
       body: buffer
     });
     if (res.ok) {
-      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/presentations/${filename}`;
+      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/presentations/${filename}?t=${Date.now()}`;
     }
   } catch (e) {
     console.error("Error subiendo PPTX a Supabase:", e);
