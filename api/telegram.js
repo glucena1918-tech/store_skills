@@ -168,9 +168,17 @@ export default async function handler(req, res) {
         "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
         "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
         "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
-        "💻 *Sincronización Local:* Al encender tu laptop, todos los pendientes se transfieren automáticamente a tu Bóveda de Obsidian.\n\n" +
-        "Tu ecosistema está vigilante las 24 horas.";
+        "💻 *Sincronización Local:* Activa.\n\n" +
+        "📡 _Solicitando telemetría de hardware a la Laptop. Si está encendida, responderá en unos segundos..._";
       await sendTelegramMessage(chatId, statusMsg);
+
+      const ts = Date.now();
+      await uploadToSupabaseBuffer(`req_${ts}.json`, {
+        type: "status_request",
+        content: "Solicitud de estado de hardware",
+        timestamp: ts
+      });
+
       return res.status(200).json({ ok: true, handled: "status" });
     }
 
