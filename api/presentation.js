@@ -5,7 +5,7 @@
 let _PptxGenClass = null;
 async function getPptxGenClass() {
   if (!_PptxGenClass) {
-    const m = await import("pptxgenjs");
+    const m = await import("pptxgenjs/dist/pptxgen.cjs.js");
     _PptxGenClass = m.default || m;
   }
   return _PptxGenClass;

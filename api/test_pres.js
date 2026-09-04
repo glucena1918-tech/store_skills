@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const mod = await import("pptxgenjs");
+    const mod = await import("pptxgenjs/dist/pptxgen.cjs.js");
     const PptxGen = mod.default || mod;
     const pres = new PptxGen();
     pres.layout = "LAYOUT_16x9";
