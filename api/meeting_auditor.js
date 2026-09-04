@@ -29,12 +29,12 @@ export function parseMeetingIntent(text) {
   if (!text) return false;
   const lower = text.toLowerCase().trim();
 
-  // Comandos explícitos
+  // Comandos explícitos o frases de inicio directo de reunión
   if (
-    lower.startsWith("minuta:") || lower.startsWith("/minuta") ||
-    lower.startsWith("reunion:") || lower.startsWith("reunión:") || lower.startsWith("/reunion") || lower.startsWith("/reunión") ||
-    lower.startsWith("acta:") || lower.startsWith("/acta") ||
-    lower.startsWith("auditar reunión") || lower.startsWith("auditar reunion")
+    lower.startsWith("minuta") || lower.startsWith("/minuta") ||
+    lower.startsWith("reunion") || lower.startsWith("reunión") || lower.startsWith("/reunion") || lower.startsWith("/reunión") ||
+    lower.startsWith("acta") || lower.startsWith("/acta") ||
+    lower.startsWith("auditar") || lower.startsWith("balance de reunión") || lower.startsWith("balance de reunion")
   ) {
     return true;
   }
@@ -42,15 +42,15 @@ export function parseMeetingIntent(text) {
   // Detección semántica por contenido de reunión
   const hasMeetingWord = 
     lower.includes("reunión") || lower.includes("reunion") || 
-    lower.includes("minuta") || lower.includes("acta de reunión") || 
-    lower.includes("mesa de trabajo") || lower.includes("comité de operaciones") ||
-    lower.includes("junta directiva");
+    lower.includes("minuta") || lower.includes("acta") || 
+    lower.includes("mesa de trabajo") || lower.includes("comité") ||
+    lower.includes("junta directiva") || lower.includes("sesión de trabajo");
 
   const hasAgreementWord =
-    lower.includes("acordamos") || lower.includes("acuerdo") || lower.includes("acuerdos") ||
-    lower.includes("compromiso") || lower.includes("compromisos") ||
+    lower.includes("acord") || lower.includes("acuerd") ||
+    lower.includes("compromis") ||
     lower.includes("responsable") || lower.includes("fecha límite") || lower.includes("plazo") ||
-    lower.includes("se acordó") || lower.includes("se acordo") || lower.includes("tareas asignadas");
+    lower.includes("tarea");
 
   return hasMeetingWord && hasAgreementWord;
 }
