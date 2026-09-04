@@ -1,6 +1,8 @@
 // Vercel Serverless Function: JARVIS Cloud Gateway 24/7
 // Endpoint: https://store-skills.vercel.app/api/telegram
 
+import { generateWeatherReport } from "./weather_cron.js";
+
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
 const SUPABASE_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co";
@@ -237,9 +239,16 @@ function getHelpMenu(section = "main") {
   } else if (section === "help_utils") {
     text = "🤖 *IA y Utilidades en Vivo*\n\n" +
            "• `BCV` o `Dolar` — Tasa oficial de cambio en tiempo real\n" +
+           "• `Clima` — Pronóstico diario y estimaciones horarias (Caracas)\n" +
            "• `IA: [pregunta]` — Consulta a JARVIS IA (24/7 autónomo)\n" +
-           "• `Status` — Diagnóstico del sistema y telemetría";
-    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+           "• `Status` — Diagnóstico del sistema y telemetría\n\n" +
+           "👇 _Toca un botón para consultar de inmediato:_";
+    reply_markup.inline_keyboard = [
+      [{ text: "🏦 Tasa BCV Oficial", callback_data: "cmd_bcv" },
+       { text: "🌤️ Clima de Hoy", callback_data: "cmd_weather" }],
+      [{ text: "⚡ Estado (Status)", callback_data: "cmd_status" }],
+      [{ text: "🔙 Volver", callback_data: "help_main" }]
+    ];
   } else if (section === "help_mail") {
     text = "📧 *Gestión de Correos (Gmail)*\n\n" +
            "• `Borrador: [Asunto], [Cuerpo]` — Preparar borrador\n" +
@@ -368,6 +377,18 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, handled: "cmd_status" });
       }
 
+      if (data === "cmd_weather") {
+        const weatherMsg = await generateWeatherReport(false);
+        await sendTelegramMessage(cbChatId, weatherMsg);
+        return res.status(200).json({ ok: true, handled: "cmd_weather" });
+      }
+
+      if (data === "cmd_bcv") {
+        const bcvMsg = await getBCVRates();
+        await sendTelegramMessage(cbChatId, bcvMsg);
+        return res.status(200).json({ ok: true, handled: "cmd_bcv" });
+      }
+
       return res.status(200).json({ ok: true, handled: "callback_query" });
     }
 
@@ -459,6 +480,17 @@ export default async function handler(req, res) {
       const bcvMsg = await getBCVRates();
       await sendTelegramMessage(chatId, bcvMsg);
       return res.status(200).json({ ok: true, handled: "bcv" });
+    }
+
+    // ==========================================
+    // 3.5 COMANDO: ESTADO DEL TIEMPO / CLIMA
+    // ==========================================
+    if (lower === "clima" || lower === "/clima" || lower === "tiempo" || lower === "/tiempo" ||
+        lower === "meteorologia" || lower === "/meteo" || lower === "pronostico" || lower === "/pronostico" ||
+        lower === "clima caracas" || lower === "el clima" || lower === "el tiempo") {
+      const weatherMsg = await generateWeatherReport(false);
+      await sendTelegramMessage(chatId, weatherMsg);
+      return res.status(200).json({ ok: true, handled: "weather" });
     }
 
     // ==========================================
