@@ -6,17 +6,24 @@ const ALLOWED_CHAT_ID = "1274149213";
 const SUPABASE_URL = "https://tlhbpzwzqmcrutwxomqy.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsaGJwend6cW1jcnV0d3hvbXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDgzNDM2OCwiZXhwIjoyMTAwNDEwMzY4fQ.ztspOB4xrZT3IEKoOLyYDsah5thmlfbOQvBMI9aSOFc";
 
-async function sendTelegramMessage(chatId, text) {
+async function sendTelegramMessage(chatId, text, replyMarkup = null) {
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: "Markdown"
-      })
+    const payload = {
+      chat_id: chatId,
+      text: text,
+      parse_mode: "Markdown"
+    };
+    if (replyMarkup) {
+      payload.reply_markup = replyMarkup;
+    }
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
     if (!res.ok) {
       await fetch(url, {
@@ -52,6 +59,43 @@ async function uploadToSupabaseBuffer(filename, data) {
   }
 }
 
+function getHelpMenu(section = "main") {
+  let text = "";
+  let reply_markup = { inline_keyboard: [] };
+
+  if (section === "main" || section === "help_main") {
+    text = "🤖 *CENTRO DE MANDO JARVIS*\n\nElige una categoría de comandos:";
+    reply_markup.inline_keyboard = [
+      [{ text: "📅 Agenda & Calendario", callback_data: "help_calendar" },
+       { text: "📋 Tareas & Obsidian", callback_data: "help_tasks" }],
+      [{ text: "📧 Correo (Gmail)", callback_data: "help_mail" },
+       { text: "📄 Gestión Documento", callback_data: "help_docs" }],
+      [{ text: "🤖 IA & Utilidades", callback_data: "help_utils" },
+       { text: "⚙️ Configuración (Voz)", callback_data: "help_config" }]
+    ];
+  } else if (section === "help_calendar") {
+    text = "📅 *Google Calendar & Obsidian*\n\n• `Calendario` — Ver eventos\n• `Agenda: [Título], [Fecha], [Inicio], [Fin], [Lugar]` — Agendar en Calendar y Obsidian\n• `Evento: [Texto]` — Agendar en Obsidian (o Calendar)\n• `Borrar evento [N]` — Eliminar\n• `Editar evento [N]: [Datos]`";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  } else if (section === "help_tasks") {
+    text = "📋 *Gestión de Tareas y Notas*\n\n• `Tareas` — Pendientes de hoy\n• `Check [N]` — Completar tarea\n• `Tarea: [texto]` — Agregar tarea\n• `Nota: [texto]` — Guardar nota rápida\n• `Recordatorio: [HH:MM] [Texto]` — Alarma en Laptop";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  } else if (section === "help_mail") {
+    text = "📧 *Gestión de Correos (Gmail)*\n\n• `Enviar email: [Para], [Asunto], [Cuerpo]` — Enviar\n• `Borrador: [Asunto], [Cuerpo]` — Crear borrador\n• `Email` — Ver no leídos\n• `Resumen` — Últimos correos";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  } else if (section === "help_docs") {
+    text = "📄 *Documentos & Visión*\n\n• `Memo: Destinatario | Asunto | Cuerpo`\n• `Oficio: Destinatario | Cargo | Cuerpo`\n• Enviar archivo `.PDF` — Extrae texto, resume y archiva\n• Enviar foto — Digitalización y ficha con IA";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  } else if (section === "help_utils") {
+    text = "🤖 *IA y Utilidades*\n\n• `IA: [pregunta]` — Consultar IA local (Ollama)\n• `BCV` — Tasa oficial de cambio\n• `Status` — Diagnóstico del sistema";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  } else if (section === "help_config") {
+    text = "⚙️ *Configuración de Sistema*\n\n• `Voz on` / `Voz off` — Respuestas habladas\n• `Voz Paola` — Configurar voz femenina\n• `Voz David` — Configurar voz masculina";
+    reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
+  }
+
+  return { text, reply_markup };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
@@ -63,7 +107,45 @@ export default async function handler(req, res) {
 
   try {
     const update = req.body;
-    if (!update || !update.message) {
+    if (!update) {
+      return res.status(200).json({ ok: true, ignored: "no_update" });
+    }
+
+    if (update.callback_query) {
+      const cb = update.callback_query;
+      const cbChatId = String(cb.message.chat.id);
+      const cbMsgId = cb.message.message_id;
+      const data = cb.data;
+
+      if (cbChatId !== ALLOWED_CHAT_ID) {
+        return res.status(200).json({ ok: true, ignored: "unauthorized" });
+      }
+
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: cb.id })
+      });
+
+      if (data.startsWith("help_")) {
+        const { text, reply_markup } = getHelpMenu(data);
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: cbChatId,
+            message_id: cbMsgId,
+            text: text,
+            parse_mode: "Markdown",
+            reply_markup: reply_markup
+          })
+        });
+      }
+
+      return res.status(200).json({ ok: true, handled: "callback_query" });
+    }
+
+    if (!update.message) {
       return res.status(200).json({ ok: true, ignored: "no_message" });
     }
 
@@ -98,17 +180,8 @@ export default async function handler(req, res) {
 
     // 2. Comando: Ayuda / Start
     if (lower === "start" || lower === "/start" || lower === "ayuda" || lower === "/ayuda" || lower === "help" || lower === "/help") {
-      const helpMsg = 
-        "🤖 *CENTRO DE MANDO JARVIS CLOUD 24/7*\n\n" +
-        "Captura ubicua para tu Segundo Cerebro (Obsidian):\n\n" +
-        "• `Tarea: [texto]` — Añadir a Objetivos de la Jornada (Bitácora)\n" +
-        "• `Nota: [texto]` — Guardar nota rápida en Inbox.md\n" +
-        "• `Agenda: [texto]` o `Evento: [texto]` — Registrar cita en Bitácora y Calendar\n" +
-        "• `Borrador: [Asunto], [Mensaje]` — Preparar borrador en Gmail\n" +
-        "• `Status` — Diagnóstico del nodo en la nube\n" +
-        "• Cualquier texto libre — Se deposita en tu Inbox.md\n\n" +
-        "_Todo queda asegurado en Supabase y se inyecta a tu Bóveda local al activar tu laptop._";
-      await sendTelegramMessage(chatId, helpMsg);
+      const { text: helpMsg, reply_markup: rm } = getHelpMenu("main");
+      await sendTelegramMessage(chatId, helpMsg, rm);
       return res.status(200).json({ ok: true, handled: "help" });
     }
 
