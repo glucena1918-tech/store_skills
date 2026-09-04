@@ -2,7 +2,14 @@
 // Endpoint: https://store-skills.vercel.app/api/presentation
 // Compatible con Make (Integromat), Telegram Bot y llamadas HTTP directas.
 
-import pptxgen from "pptxgenjs";
+let _PptxGenClass = null;
+async function getPptxGenClass() {
+  if (!_PptxGenClass) {
+    const m = await import("pptxgenjs");
+    _PptxGenClass = m.default || m;
+  }
+  return _PptxGenClass;
+}
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -51,7 +58,8 @@ function parseBoldRuns(text, baseSize = 14, baseColor = COLOR_DARK_TEXT) {
  * Genera el archivo PPTX utilizando la identidad visual oficial de CUSPAL
  */
 export async function buildCuspalPresentation(data) {
-  const pres = new pptxgen();
+  const PptxGen = await getPptxGenClass();
+  const pres = new PptxGen();
   pres.layout = "LAYOUT_16x9";
   pres.title = data.title || "Presentación Ejecutiva CUSPAL";
   pres.company = "CUSPAL / Ministerio del Poder Popular para la Alimentación";
