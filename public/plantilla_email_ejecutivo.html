@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantilla de Email Ejecutivo - GHLL Soluciones</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-page: #0B0F19;
+            --surface: #131B2E;
+            --border: #1E293B;
+            --cobalt: #2563EB;
+            --cobalt-light: #3B82F6;
+            --navy: #0A192F;
+            --text: #F1F5F9;
+            --text-muted: #94A3B8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Barra de Control Superior */
+        .control-panel {
+            width: 100%;
+            max-width: 680px;
+            background: rgba(19, 27, 46, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-info h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: -0.3px;
+        }
+
+        .panel-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--cobalt) 0%, #1D4ED8 100%);
+            color: #FFFFFF;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: #E2E8F0;
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--cobalt);
+            box-shadow: none;
+        }
+
+        /* Notificación Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #10B981;
+            color: #FFFFFF;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(10px);
+            z-index: 9999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Marco de Simulación Gmail */
+        .preview-wrapper {
+            width: 100%;
+            max-width: 680px;
+            background: #EAEEF4;
+            border-radius: 18px;
+            padding: 30px 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gmail-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-left: 6px;
+        }
+
+        .gmail-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .dot-red { background: #EF4444; }
+        .dot-yellow { background: #F59E0B; }
+        .dot-green { background: #10B981; }
+
+        .gmail-subject {
+            font-size: 0.85rem;
+            color: #475569;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        /* Modal de Código */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 760px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-body textarea {
+            width: 100%;
+            height: 380px;
+            background: #090D16;
+            border: 1px solid var(--border);
+            color: #93C5FD;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            padding: 14px;
+            border-radius: 10px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Panel de Control y Acciones -->
+    <div class="control-panel">
+        <div class="panel-info">
+            <h1>Email Corporativo Ejecutivo · GHLL Soluciones</h1>
+            <p>Paleta: Azul Marino Profundo (#0F1E36) + Acento Cobalto (#2563EB) + Blanco Puro</p>
+        </div>
+        <div class="action-btns">
+            <button type="button" class="btn" onclick="copyRenderedEmail()">
+                📋 Copiar para Gmail
+            </button>
+            <button type="button" class="btn btn-outline" onclick="openCodeModal()">
+                &lt;/&gt; Ver Código HTML
+            </button>
+        </div>
+    </div>
+
+    <!-- Simulación de Correo en Gmail -->
+    <div class="preview-wrapper">
+        <div class="gmail-bar">
+            <div class="gmail-dot dot-red"></div>
+            <div class="gmail-dot dot-yellow"></div>
+            <div class="gmail-dot dot-green"></div>
+            <span class="gmail-subject">Vista Previa · Bandeja de Entrada Gmail</span>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- INICIO DE LA PLANTILLA DE CORREO HTML (COMPATIBLE CON GMAIL & OUTLOOK) -->
+        <!-- ================================================================= -->
+        <div id="email-template-container">
+            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #EAEEF4; padding: 20px 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; mso-line-height-rule: exactly;">
+                <tr>
+                    <td align="center">
+                        <!-- Contenedor Central Card (Máximo 600px para óptima lectura) -->
+                        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(15, 30, 54, 0.07); border: 1px solid #E2E8F0;">
+                            
+                            <!-- 1. HEADER EJECUTIVO MODERNO -->
+                            <tr>
+                                <td style="background-color: #0F1E36; background-image: linear-gradient(145deg, #0A1628 0%, #102444 100%); padding: 26px 32px; border-top: 4px solid #2563EB;">
+                                    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                        <tr>
+                                            <td valign="middle" align="left">
+                                                <!-- Marca / Título Institucional -->
+                                                <div style="font-family: 'Montserrat', 'Inter', Arial, sans-serif; font-size: 19px; font-weight: 800; color: #FFFFFF; letter-spacing: 0.5px; text-transform: uppercase;">
+                                                    GHLL Soluciones
+                                                </div>
+                                                <div style="font-size: 12px; font-weight: 500; color: #93C5FD; letter-spacing: 0.8px; margin-top: 4px; text-transform: uppercase;">
+                                                    Despacho Ejecutivo & Consultoría Estratégica
+                                                </div>
+                                            </td>
+                                            <td valign="middle" align="right" width="60">
+                                                <!-- Logo 3D Oficial GHLL -->
+                                                <img src="https://store-skills.vercel.app/logo.png" alt="GHLL Logo" width="52" height="42" style="display: block; border: 0; outline: none; text-decoration: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));" />
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- 2. CUERPO DEL CORREO (ESPACIO DE COMUNICACIÓN) -->
+                            <tr>
+                                <td style="padding: 34px 32px 28px 32px; color: #1E293B; line-height: 1.65; font-size: 15px;">
+                                    
+                                    <!-- Badge de Tipo de Comunicación (Opcional para dar jerarquía) -->
+                                    <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+                                        <tr>
+                                            <td style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #1D4ED8; letter-spacing: 0.6px; text-transform: uppercase;">
+                                                📌 Comunicación Oficial / Seguimiento
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- Saludo -->
+                                    <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #0F1E36;">
+                                        Estimado(a) colega / cliente,
+                                    </p>
+
+                                    <!-- Párrafos Principales -->
+                                    <p style="margin: 0 0 16px 0; color: #334155;">
+                                        Espero que se encuentre excelente. Me comunico cordialmente con el objetivo de compartir las actualizaciones correspondientes a nuestras operaciones en curso y coordinar las acciones estratégicas acordadas.
+                                    </p>
+
+                                    <p style="margin: 0 0 24px 0; color: #334155;">
+                                        A continuación, detallo los puntos focales y compromisos de avance para su oportuna revisión:
+                                    </p>
+
+                                    <!-- 3. BLOQUE DE DESTACADOS / PUNTOS CLAVE (TARJETA COBALTO SUAVE) -->
+                                    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #F8FAFC; border-left: 4px solid #2563EB; border-radius: 8px; margin: 0 0 24px 0; border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;">
+                                        <tr>
+                                            <td style="padding: 20px 22px;">
+                                                <div style="font-size: 13px; font-weight: 700; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                                                    🎯 PUNTOS CLAVE & ENTREGABLES
+                                                </div>
+                                                
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="font-size: 14px; line-height: 1.6; color: #334155;">
+                                                    <tr>
+                                                        <td width="24" valign="top" style="padding-bottom: 10px; color: #2563EB; font-weight: bold;">✔</td>
+                                                        <td style="padding-bottom: 10px;">
+                                                            <strong style="color: #0F1E36;">Punto de Control 1:</strong> Consolidación de información operativa y revisión técnica completada satisfactoriamente.
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="24" valign="top" style="padding-bottom: 10px; color: #2563EB; font-weight: bold;">✔</td>
+                                                        <td style="padding-bottom: 10px;">
+                                                            <strong style="color: #0F1E36;">Próximo Hito:</strong> Validación de acuerdos y cronograma de ejecución para la fase inmediata.
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="24" valign="top" style="color: #2563EB; font-weight: bold;">✔</td>
+                                                        <td>
+                                                            <strong style="color: #0F1E36;">Soporte Permanente:</strong> Seguimiento directo a través de nuestros canales ejecutivos autorizados.
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- Párrafo de Cierre -->
+                                    <p style="margin: 0 0 24px 0; color: #334155;">
+                                        Agradezco de antemano su amable atención y quedo a su total disposición para cualquier consulta o aclaratoria complementaria.
+                                    </p>
+
+                                    <!-- 4. BOTÓN DE ACCIÓN EJECUTIVO (OPCIONAL / LLAMADO A LA ACCIÓN) -->
+                                    <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 0 30px 0;">
+                                        <tr>
+                                            <td align="center" style="border-radius: 8px; background-color: #2563EB;">
+                                                <a href="mailto:glucena1918@gmail.com" target="_blank" style="font-size: 14px; font-weight: 600; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block; border: 1px solid #2563EB;">
+                                                    Responder a este Correo ➔
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- Despedida Corta -->
+                                    <p style="margin: 0 0 20px 0; color: #64748B; font-size: 14px;">
+                                        Atentamente,
+                                    </p>
+
+                                    <!-- 5. FIRMA EJECUTIVA INTEGRADA -->
+                                    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-top: 1px solid #E2E8F0; padding-top: 20px;">
+                                        <tr>
+                                            <td valign="middle" align="left">
+                                                <div style="font-size: 16px; font-weight: 700; color: #0F1E36; letter-spacing: -0.2px;">
+                                                    Gonzalo H. Lucena L.
+                                                </div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #2563EB; margin-top: 2px;">
+                                                    Director General & Consultor Estratégico
+                                                </div>
+                                                <div style="font-size: 12px; color: #64748B; margin-top: 3px;">
+                                                    GHLL Soluciones
+                                                </div>
+                                            </td>
+                                            <td valign="middle" align="right">
+                                                <!-- Enlaces / Badges de Contacto -->
+                                                <table border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="padding-left: 10px;">
+                                                            <a href="mailto:glucena1918@gmail.com" style="text-decoration: none; color: #2563EB; font-size: 12px; font-weight: 600;">
+                                                                ✉️ glucena1918@gmail.com
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+
+                            <!-- 6. FOOTER INSTITUCIONAL Y LEGAL -->
+                            <tr>
+                                <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 32px; font-size: 11px; color: #94A3B8; line-height: 1.5; text-align: center;">
+                                    <div style="font-weight: 600; color: #64748B; margin-bottom: 4px;">
+                                        📍 Carrizal, Municipio Carrizal, Estado Miranda · República Bolivariana de Venezuela
+                                    </div>
+                                    <div>
+                                        Este mensaje y sus archivos adjuntos son confidenciales y están dirigidos exclusivamente a su destinatario. Si ha recibido esta comunicación por error, por favor notifíquelo y elimine el original.
+                                    </div>
+                                </td>
+                            </tr>
+
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <!-- ================================================================= -->
+        <!-- FIN DE LA PLANTILLA DE CORREO HTML -->
+        <!-- ================================================================= -->
+    </div>
+
+    <!-- Modal para ver el código HTML puro -->
+    <div class="modal" id="codeModal" onclick="closeModalOnBg(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="font-size: 1rem; color: #FFFFFF;">Código HTML de la Plantilla</h3>
+                <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;" onclick="closeCodeModal()">Cerrar ✕</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="codeTextarea" readonly></textarea>
+                <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn" onclick="copyRawCode()">📋 Copiar Código HTML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✅</span>
+        <span id="toast-msg">¡Copiado con éxito al portapapeles!</span>
+    </div>
+
+    <script>
+        // Copiar Formato Visual para pegar directo en la ventana de Redactar de Gmail
+        async function copyRenderedEmail() {
+            const container = document.getElementById('email-template-container');
+            const htmlContent = container.innerHTML;
+            const plainText = container.innerText;
+
+            try {
+                if (navigator.clipboard && window.ClipboardItem) {
+                    const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+                    const blobText = new Blob([plainText], { type: 'text/plain' });
+                    const data = [new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })];
+                    await navigator.clipboard.write(data);
+                    showToast("¡Diseño visual copiado! Abre Gmail y presiona Ctrl + V en Redactar.");
+                } else {
+                    // Fallback con selección de rango
+                    const range = document.createRange();
+                    range.selectNode(container);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                    document.execCommand('copy');
+                    window.getSelection().removeAllRanges();
+                    showToast("¡Copiado! Pega directo en Gmail con Ctrl + V.");
+                }
+            } catch (err) {
+                console.error("Error al copiar:", err);
+                showToast("Por favor selecciona y copia el contenido visual manualmente.");
+            }
+        }
+
+        // Modal de Código
+        function openCodeModal() {
+            const container = document.getElementById('email-template-container');
+            document.getElementById('codeTextarea').value = container.innerHTML.trim();
+            document.getElementById('codeModal').style.display = 'flex';
+        }
+
+        function closeCodeModal() {
+            document.getElementById('codeModal').style.display = 'none';
+        }
+
+        function closeModalOnBg(e) {
+            if (e.target.id === 'codeModal') {
+                closeCodeModal();
+            }
+        }
+
+        function copyRawCode() {
+            const textarea = document.getElementById('codeTextarea');
+            textarea.select();
+            document.execCommand('copy');
+            showToast("¡Código HTML puro copiado al portapapeles!");
+            closeCodeModal();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
