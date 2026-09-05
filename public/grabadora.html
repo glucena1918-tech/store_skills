@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
+            color-scheme: dark;
             --bg-color: #0B0C10;
             --surface-color: #12141B;
             --input-bg: rgba(18, 20, 27, 0.95);
@@ -18,6 +19,22 @@
             --danger: #FF3366;
             --success: #33FF66;
             --warning: #FFB800;
+        }
+
+        /* Dark scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 12, 16, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neon-dark);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-blue);
         }
 
         * {
@@ -171,6 +188,9 @@
         textarea.form-control {
             resize: vertical;
             min-height: 85px;
+            color-scheme: dark;
+            scrollbar-color: var(--neon-dark) var(--input-bg);
+            scrollbar-width: thin;
         }
 
         input[type="date"].form-control,
