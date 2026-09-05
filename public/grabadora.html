@@ -4,19 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Grabadora - Glucena</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0B0C10;
+            --surface-color: #12141B;
+            --input-bg: rgba(18, 20, 27, 0.95);
+            --border-color: #1F2833;
             --text-color: #C5C6C7;
+            --text-muted: #8892B0;
             --neon-blue: #66FCF1;
             --neon-dark: #45A29E;
             --danger: #FF3366;
             --success: #33FF66;
+            --warning: #FFB800;
         }
-        body {
+
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+        }
+
+        body {
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Inter', sans-serif;
@@ -24,351 +34,902 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding: 15px 12px 40px 12px;
+            overflow-x: hidden;
         }
-        h1 {
-            font-family: 'Orbitron', sans-serif;
-            color: var(--neon-blue);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px var(--neon-blue);
-            margin-bottom: 10px;
+
+        /* Header & Logo */
+        header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
             text-align: center;
         }
-        .logo {
-            width: 120px;
-            height: auto;
-            margin-bottom: 30px;
-            filter: drop-shadow(0 0 15px var(--neon-blue));
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(102, 252, 241, 0.5);
+            margin-bottom: 12px;
+            line-height: 1.2;
         }
+
+        .logo {
+            width: 110px;
+            height: auto;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 0 16px rgba(102, 252, 241, 0.45));
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.04);
+        }
+
+        .badge-system {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            color: var(--neon-dark);
+            background: rgba(69, 162, 158, 0.1);
+            border: 1px solid rgba(69, 162, 158, 0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        /* Main Container */
         .container {
             width: 100%;
-            max-width: 400px;
-            background: rgba(69, 162, 158, 0.05);
-            border: 1px solid var(--neon-dark);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
-            box-sizing: border-box;
+            max-width: 480px;
+            background: rgba(18, 20, 27, 0.85);
+            border: 1px solid rgba(69, 162, 158, 0.3);
+            border-radius: 16px;
+            padding: 20px 18px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), 0 0 20px rgba(102, 252, 241, 0.1);
+            backdrop-filter: blur(8px);
         }
+
+        /* Sections */
         .section {
-            margin-bottom: 25px;
+            margin-bottom: 24px;
         }
+
         .section-title {
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 700;
             color: var(--neon-blue);
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--neon-dark);
-            padding-bottom: 5px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(69, 162, 158, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 1px;
         }
-        /* Botones futuristas */
+
+        /* Standardized Form Inputs & Placeholders */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        label {
+            display: block;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--neon-blue);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .form-control {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--neon-dark);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.4;
+            transition: all 0.25s ease;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        /* Unified aesthetic placeholder style */
+        .form-control::placeholder {
+            color: rgba(197, 198, 199, 0.45);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            opacity: 1;
+        }
+
+        .form-control:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 12px rgba(102, 252, 241, 0.25);
+            background-color: rgba(22, 26, 36, 1);
+            color: #FFFFFF;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 85px;
+        }
+
+        input[type="date"].form-control,
+        input[type="time"].form-control {
+            color-scheme: dark;
+            cursor: pointer;
+        }
+
+        /* Buttons */
         .btn {
             background: transparent;
-            border: 2px solid var(--neon-blue);
+            border: 1.5px solid var(--neon-blue);
             color: var(--neon-blue);
             font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
-            padding: 12px 20px;
+            padding: 11px 16px;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
+            transition: all 0.25s ease;
             text-transform: uppercase;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 8px;
+            width: 100%;
+            letter-spacing: 1px;
+            user-select: none;
         }
-        .btn:hover, .btn:active {
+
+        .btn:hover:not(:disabled) {
             background: var(--neon-blue);
             color: var(--bg-color);
-            box-shadow: 0 0 15px var(--neon-blue);
+            box-shadow: 0 0 16px rgba(102, 252, 241, 0.6);
         }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .btn.filled {
+            background: rgba(102, 252, 241, 0.15);
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+        }
+
+        .btn.ready {
+            background: rgba(51, 255, 102, 0.15);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .btn.ready:hover:not(:disabled) {
+            background: var(--success);
+            color: var(--bg-color);
+            box-shadow: 0 0 16px rgba(51, 255, 102, 0.6);
+        }
+
         .btn.recording {
             border-color: var(--danger);
-            color: var(--danger);
-            animation: pulse 1.5s infinite;
+            color: #FFFFFF;
+            background: rgba(255, 51, 102, 0.25);
+            animation: pulse-danger 1.3s infinite;
         }
-        .btn.recording:hover {
-            background: var(--danger);
-            color: white;
-            box-shadow: 0 0 15px var(--danger);
-        }
-        .btn.filled {
-            background: var(--neon-blue);
-            color: var(--bg-color);
-            box-shadow: 0 0 10px var(--neon-blue);
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: #555;
-            color: #555;
-            box-shadow: none;
-        }
-        @keyframes pulse {
+
+        @keyframes pulse-danger {
             0% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(255, 51, 102, 0); }
+            70% { box-shadow: 0 0 0 12px rgba(255, 51, 102, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0); }
         }
-        
-        /* File Input */
-        .file-upload {
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            border-color: #444;
+            color: #777;
+            box-shadow: none;
+        }
+
+        /* File Upload Wrappers */
+        .file-upload-btn {
             position: relative;
             overflow: hidden;
-            display: block;
+            display: flex;
+            cursor: pointer;
         }
-        .file-upload input[type="file"] {
+
+        .file-upload-btn input[type="file"] {
             position: absolute;
             top: 0;
-            right: 0;
-            min-width: 100%;
-            min-height: 100%;
-            font-size: 100px;
-            text-align: right;
-            filter: alpha(opacity=0);
-            opacity: 0;
-            outline: none;
-            background: white;
-            cursor: inherit;
-            display: block;
-        }
-        
-        .photo-preview {
+            left: 0;
             width: 100%;
-            border-radius: 8px;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Photo Preview */
+        .photo-preview-container {
+            position: relative;
             margin-top: 10px;
             display: none;
-            border: 1px solid var(--neon-dark);
         }
 
-        .audio-slot {
+        .photo-preview {
+            width: 100%;
+            max-height: 220px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--neon-dark);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: block;
+        }
+
+        .btn-remove-photo {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(11, 12, 16, 0.85);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Audio Slot Cards */
+        .slot-card {
+            background: rgba(11, 12, 16, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: border-color 0.25s ease;
+        }
+
+        .slot-card.has-audio {
+            border-color: rgba(51, 255, 102, 0.4);
+        }
+
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .slot-tag {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--neon-blue);
+            letter-spacing: 1px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .audio-slot .btn-record {
-            flex: 1;
-        }
-        .audio-slot audio {
-            width: 100%;
-            display: none;
-            margin-top: 5px;
-            height: 40px;
-        }
-        .slot-container {
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #1f2833;
-            margin-bottom: 10px;
+            gap: 6px;
         }
 
-        .btn-submit {
-            margin-top: 30px;
-            padding: 15px;
-            font-size: 1.1rem;
-            background: var(--neon-blue);
-            color: var(--bg-color);
-            box-shadow: 0 0 20px var(--neon-blue);
+        .btn-delete-slot {
+            background: transparent;
             border: none;
+            color: var(--danger);
+            font-size: 0.75rem;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            padding: 2px 6px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
         }
-        
-        .status-msg {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: var(--success);
+
+        .btn-delete-slot:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .slot-actions {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 8px;
+        }
+
+        .slot-actions .btn {
+            padding: 10px 8px;
+            font-size: 11.5px;
+            margin-bottom: 0;
+        }
+
+        .audio-player {
+            width: 100%;
+            height: 36px;
+            margin-top: 8px;
             display: none;
-            font-weight: 600;
+            border-radius: 6px;
+            outline: none;
         }
-        
-        /* Loader */
-        .loader {
-            border: 3px solid rgba(102, 252, 241, 0.3);
-            border-top: 3px solid var(--neon-blue);
-            border-radius: 50%;
+
+        .audio-meta-tag {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 5px;
+            display: none;
+            word-break: break-all;
+        }
+
+        /* Add Track Button */
+        .btn-add-track {
+            border: 1.5px dashed var(--neon-dark);
+            color: var(--neon-dark);
+            font-size: 12px;
+            padding: 10px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+
+        .btn-add-track:hover {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            background: rgba(102, 252, 241, 0.05);
+            box-shadow: 0 0 12px rgba(102, 252, 241, 0.2);
+        }
+
+        /* Summary Telemetry */
+        .summary-bar {
+            background: rgba(69, 162, 158, 0.08);
+            border: 1px solid rgba(69, 162, 158, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-bottom: 16px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .summary-bar span {
+            color: var(--neon-blue);
+            font-weight: 700;
+        }
+
+        /* Submit Button */
+        .btn-submit {
+            background: linear-gradient(135deg, var(--neon-blue), #45A29E);
+            color: #0B0C10;
+            border: none;
+            font-size: 1.05rem;
+            font-weight: 900;
+            padding: 15px;
+            letter-spacing: 2px;
+            box-shadow: 0 0 25px rgba(102, 252, 241, 0.4);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #7DFDF4, #52B5B1);
+            color: #000;
+            box-shadow: 0 0 32px rgba(102, 252, 241, 0.75);
+            transform: translateY(-1px);
+        }
+
+        /* Status & Feedback */
+        .status-box {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            display: none;
+            line-height: 1.4;
+        }
+
+        .status-box.success {
+            display: block;
+            background: rgba(51, 255, 102, 0.12);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .status-box.error {
+            display: block;
+            background: rgba(255, 51, 102, 0.12);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        /* Spinner */
+        .spinner {
             width: 20px;
             height: 20px;
-            animation: spin 1s linear infinite;
+            border: 2.5px solid rgba(11, 12, 16, 0.3);
+            border-top: 2.5px solid #0B0C10;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
             display: none;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
-    <h1>Grabadora<br>Glucena</h1>
-    <img src="/logo.png" alt="Glucena Logo" class="logo">
+    <header>
+        <h1>Grabadora<br>Glucena</h1>
+        <img src="logo.png" onerror="this.onerror=null; this.src='/logo.png';" alt="Glucena Logo" class="logo">
+        <div class="badge-system">SISTEMA INTELIGENTE DE CAPTURA // MAKE</div>
+    </header>
 
     <div class="container">
         
-        <!-- FOTO -->
-        <div class="section">
-            <div class="section-title">1. FOTO DE LA PIZARRA</div>
-            <div class="file-upload btn" id="btn-photo">
-                <span>📸 TOMAR / SUBIR FOTO</span>
+        <!-- 1. DATOS DE LA REUNIÓN (METADATOS SUPERIORES) -->
+        <section class="section">
+            <div class="section-title">
+                <span>📋</span> 1. DATOS DE LA REUNIÓN
+            </div>
+
+            <!-- Lugar -->
+            <div class="form-group">
+                <label for="meeting-place">📍 Lugar de la Reunión</label>
+                <input type="text" id="meeting-place" class="form-control" placeholder="Ej: Sala de Juntas / Sede Central / Zoom">
+            </div>
+
+            <!-- Fecha y Hora -->
+            <div class="form-group form-row">
+                <div>
+                    <label for="meeting-date">📅 Fecha (DD-MM-YYYY)</label>
+                    <input type="date" id="meeting-date" class="form-control">
+                </div>
+                <div>
+                    <label for="meeting-time">⏰ Hora (HH:mm)</label>
+                    <input type="time" id="meeting-time" class="form-control">
+                </div>
+            </div>
+
+            <!-- Asistentes -->
+            <div class="form-group">
+                <label for="meeting-attendees">👥 Asistentes (Uno por línea)</label>
+                <textarea id="meeting-attendees" class="form-control" placeholder="Ej:&#10;Gonzalo Lucena&#10;Ing. Carlos Mendoza&#10;Lic. María Rodríguez"></textarea>
+            </div>
+        </section>
+
+        <!-- 2. FOTO DE LA PIZARRA O MINUTA -->
+        <section class="section">
+            <div class="section-title">
+                <span>📸</span> 2. FOTO DE LA PIZARRA / MINUTA
+            </div>
+            
+            <div class="file-upload-btn btn" id="btn-photo">
+                <span id="btn-photo-text">📷 TOMAR O SUBIR FOTO</span>
                 <input type="file" id="photo-input" accept="image/*" capture="environment">
             </div>
-            <img id="photo-preview" class="photo-preview">
+
+            <div class="photo-preview-container" id="photo-preview-container">
+                <button type="button" class="btn-remove-photo" onclick="removePhoto()">Quitar ✕</button>
+                <img id="photo-preview" class="photo-preview" alt="Vista previa">
+            </div>
+        </section>
+
+        <!-- 3. PISTAS DE AUDIO DINÁMICAS -->
+        <section class="section">
+            <div class="section-title">
+                <span>🎙️</span> 3. GRABACIÓN / SUBIDA DE AUDIOS
+            </div>
+
+            <div id="slots-container">
+                <!-- Se inyectan dinámicamente -->
+            </div>
+
+            <button type="button" class="btn btn-add-track" onclick="addAudioSlot()">
+                ➕ AGREGAR OTRA PISTA DE AUDIO
+            </button>
+        </section>
+
+        <!-- RESUMEN DE ELEMENTOS CARGADOS -->
+        <div class="summary-bar">
+            <div>FOTO: <span id="telemetry-photo">NO</span></div>
+            <div>PISTAS: <span id="telemetry-audios">0</span></div>
+            <div>ASISTENTES: <span id="telemetry-attendees">0</span></div>
         </div>
 
-        <!-- AUDIOS -->
-        <div class="section">
-            <div class="section-title">2. GRABACIÓN DE AUDIO</div>
-            
-            <div class="slot-container" id="slot-1">
-                <button class="btn btn-record" id="rec-btn-1" onclick="toggleRecord(1)">🎙️ Pista 1 (Libre)</button>
-                <audio id="audio-playback-1" controls></audio>
-            </div>
-
-            <div class="slot-container" id="slot-2">
-                <button class="btn btn-record" id="rec-btn-2" onclick="toggleRecord(2)">🎙️ Pista 2 (Libre)</button>
-                <audio id="audio-playback-2" controls></audio>
-            </div>
-
-            <div class="slot-container" id="slot-3">
-                <button class="btn btn-record" id="rec-btn-3" onclick="toggleRecord(3)">🎙️ Pista 3 (Libre)</button>
-                <audio id="audio-playback-3" controls></audio>
-            </div>
-        </div>
-
-        <!-- ENVIAR -->
-        <button class="btn btn-submit" id="btn-submit" onclick="submitToMake()">
-            <span id="submit-text">🚀 ENVIAR A MAKE</span>
-            <div class="loader" id="submit-loader"></div>
+        <!-- BOTÓN MAESTRO DE ENVÍO -->
+        <button type="button" class="btn btn-submit" id="btn-submit" onclick="submitToMake()">
+            <span id="submit-text">🚀 ENVIAR PAQUETE A MAKE</span>
+            <div class="spinner" id="submit-spinner"></div>
         </button>
-        <div id="status-msg" class="status-msg"></div>
+
+        <div id="status-box" class="status-box"></div>
 
     </div>
 
     <script>
         const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
-        
-        let photoFile = null;
-        let audioBlobs = {
-            1: null,
-            2: null,
-            3: null
-        };
-        let mediaRecorders = {
-            1: null,
-            2: null,
-            3: null
-        };
-        let audioChunks = {
-            1: [],
-            2: [],
-            3: []
-        };
-        let currentRecordingSlot = null;
 
-        // Preview Photo
+        // Estado Global
+        let photoFile = null;
+        let slotCounter = 0;
+        const slotsData = {}; // id -> { blob: Blob|null, file: File|null, mediaRecorder: null, chunks: [], isRecording: false, timerInterval: null, seconds: 0 }
+        let currentRecordingSlotId = null;
+
+        // Inicialización automática de Fecha y Hora al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            initDateTimeDefaults();
+            // Agregar 2 pistas iniciales por defecto
+            addAudioSlot();
+            addAudioSlot();
+            updateTelemetry();
+
+            // Escuchar cambios en asistentes para telemetría en vivo
+            document.getElementById('meeting-attendees').addEventListener('input', updateTelemetry);
+        });
+
+        function initDateTimeDefaults() {
+            const now = new Date();
+            
+            // Formato YYYY-MM-DD para el input type="date"
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            document.getElementById('meeting-date').value = `${year}-${month}-${day}`;
+
+            // Formato HH:mm para el input type="time"
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('meeting-time').value = `${hours}:${minutes}`;
+        }
+
+        // Gestión de Foto
         document.getElementById('photo-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 photoFile = file;
                 const preview = document.getElementById('photo-preview');
                 preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-                document.getElementById('btn-photo').classList.add('filled');
-                document.getElementById('btn-photo').querySelector('span').innerText = '✅ FOTO CARGADA';
+                document.getElementById('photo-preview-container').style.display = 'block';
+                
+                const btn = document.getElementById('btn-photo');
+                btn.classList.add('ready');
+                document.getElementById('btn-photo-text').innerText = `✅ FOTO: ${file.name.substring(0, 18)}...`;
+                updateTelemetry();
             }
         });
 
-        async function toggleRecord(slotNumber) {
-            const btn = document.getElementById(`rec-btn-${slotNumber}`);
+        function removePhoto() {
+            photoFile = null;
+            document.getElementById('photo-input').value = "";
+            document.getElementById('photo-preview').src = "";
+            document.getElementById('photo-preview-container').style.display = 'none';
             
-            // Si ya estamos grabando en este slot, detenerlo
-            if (currentRecordingSlot === slotNumber) {
-                mediaRecorders[slotNumber].stop();
+            const btn = document.getElementById('btn-photo');
+            btn.classList.remove('ready');
+            document.getElementById('btn-photo-text').innerText = '📷 TOMAR O SUBIR FOTO';
+            updateTelemetry();
+        }
+
+        // Gestión Dinámica de Slots de Audio
+        function addAudioSlot() {
+            slotCounter++;
+            const slotId = slotCounter;
+
+            slotsData[slotId] = {
+                blob: null,
+                file: null,
+                mediaRecorder: null,
+                chunks: [],
+                isRecording: false,
+                timerInterval: null,
+                seconds: 0
+            };
+
+            const container = document.getElementById('slots-container');
+            const card = document.createElement('div');
+            card.className = 'slot-card';
+            card.id = `slot-card-${slotId}`;
+
+            card.innerHTML = `
+                <div class="slot-header">
+                    <span class="slot-tag">
+                        <span>🎵</span> PISTA ${slotId}
+                    </span>
+                    <button type="button" class="btn-delete-slot" onclick="deleteAudioSlot(${slotId})" title="Eliminar pista">
+                        ✕ Quitar
+                    </button>
+                </div>
+
+                <div class="slot-actions">
+                    <!-- Opción 1: Grabar en vivo -->
+                    <button type="button" class="btn" id="btn-rec-${slotId}" onclick="toggleRecord(${slotId})">
+                        🎙️ Grabar
+                    </button>
+
+                    <!-- Opción 2: Subir archivo pregrabado -->
+                    <div class="file-upload-btn btn" id="btn-upload-${slotId}">
+                        <span id="btn-upload-text-${slotId}">📁 Subir Archivo</span>
+                        <input type="file" accept="audio/*" onchange="handleAudioUpload(event, ${slotId})">
+                    </div>
+                </div>
+
+                <!-- Reproductor de Audio -->
+                <audio id="audio-player-${slotId}" class="audio-player" controls></audio>
+                <div id="audio-meta-${slotId}" class="audio-meta-tag"></div>
+            `;
+
+            container.appendChild(card);
+            updateTelemetry();
+        }
+
+        function deleteAudioSlot(slotId) {
+            // No permitir eliminar si está grabando
+            if (currentRecordingSlotId === slotId) {
+                alert("Detén la grabación de esta pista antes de eliminarla.");
                 return;
             }
 
-            // Si hay otro grabando, avisar
-            if (currentRecordingSlot !== null) {
-                alert("Ya hay una grabación en progreso en la Pista " + currentRecordingSlot);
-                return;
-            }
-
-            // Iniciar nueva grabación
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorders[slotNumber] = new MediaRecorder(stream);
-                audioChunks[slotNumber] = [];
-
-                mediaRecorders[slotNumber].ondataavailable = e => {
-                    if (e.data.size > 0) audioChunks[slotNumber].push(e.data);
-                };
-
-                mediaRecorders[slotNumber].onstop = () => {
-                    const audioBlob = new Blob(audioChunks[slotNumber], { type: 'audio/webm' }); // Use webm as it is standard in Chrome/Android
-                    audioBlobs[slotNumber] = audioBlob;
-                    
-                    // Cleanup stream
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    // UI Update
-                    currentRecordingSlot = null;
-                    btn.classList.remove('recording');
-                    btn.classList.add('filled');
-                    btn.innerHTML = `✅ Pista ${slotNumber} (Lista)`;
-                    
-                    // Playback setup
-                    const playback = document.getElementById(`audio-playback-${slotNumber}`);
-                    playback.src = URL.createObjectURL(audioBlob);
-                    playback.style.display = 'block';
-                };
-
-                // Start recording
-                mediaRecorders[slotNumber].start();
-                currentRecordingSlot = slotNumber;
-                
-                // UI Update
-                btn.classList.add('recording');
-                btn.innerHTML = `🛑 Detener (Grabando...)`;
-
-            } catch (err) {
-                console.error("Error accessing microphone:", err);
-                alert("Error al acceder al micrófono. Por favor permite los permisos.");
+            const card = document.getElementById(`slot-card-${slotId}`);
+            if (card) {
+                card.remove();
+                delete slotsData[slotId];
+                updateTelemetry();
             }
         }
 
-        async function submitToMake() {
-            if (currentRecordingSlot !== null) {
-                alert("Detén la grabación actual antes de enviar.");
+        // Subida de archivo pregrabado
+        function handleAudioUpload(event, slotId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const slot = slotsData[slotId];
+            slot.file = file;
+            slot.blob = null; // Priorizar archivo
+
+            const card = document.getElementById(`slot-card-${slotId}`);
+            card.classList.add('has-audio');
+
+            const uploadBtn = document.getElementById(`btn-upload-${slotId}`);
+            uploadBtn.classList.add('ready');
+            document.getElementById(`btn-upload-text-${slotId}`).innerText = `✅ ${file.name.substring(0, 10)}...`;
+
+            // Resetear botón de grabación si estaba marcado
+            const recBtn = document.getElementById(`btn-rec-${slotId}`);
+            recBtn.classList.remove('ready');
+            recBtn.innerText = '🎙️ Grabar';
+
+            // Mostrar en el reproductor
+            const player = document.getElementById(`audio-player-${slotId}`);
+            player.src = URL.createObjectURL(file);
+            player.style.display = 'block';
+
+            const meta = document.getElementById(`audio-meta-${slotId}`);
+            meta.innerText = `Archivo: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+            meta.style.display = 'block';
+
+            updateTelemetry();
+        }
+
+        // Grabación de Micrófono en vivo
+        async function toggleRecord(slotId) {
+            const slot = slotsData[slotId];
+            const btn = document.getElementById(`btn-rec-${slotId}`);
+
+            // Si este slot ya está grabando -> Detener
+            if (currentRecordingSlotId === slotId) {
+                if (slot.mediaRecorder && slot.mediaRecorder.state !== 'inactive') {
+                    slot.mediaRecorder.stop();
+                }
                 return;
             }
 
-            if (!photoFile && !audioBlobs[1] && !audioBlobs[2] && !audioBlobs[3]) {
-                alert("Por favor añade al menos una foto o un audio antes de enviar.");
+            // Si otro slot está grabando -> Avisar
+            if (currentRecordingSlotId !== null) {
+                alert(`Ya estás grabando activamente en la Pista ${currentRecordingSlotId}. Detenla primero.`);
+                return;
+            }
+
+            // Iniciar Grabación
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                slot.chunks = [];
+                slot.seconds = 0;
+                slot.file = null; // Sobrescribir subida si graba
+
+                // Seleccionar mimeType compatible
+                let mimeType = 'audio/webm';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+                    mimeType = 'audio/ogg';
+                }
+
+                slot.mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+                slot.mediaRecorder.ondataavailable = e => {
+                    if (e.data && e.data.size > 0) {
+                        slot.chunks.push(e.data);
+                    }
+                };
+
+                slot.mediaRecorder.onstop = () => {
+                    clearInterval(slot.timerInterval);
+                    const audioBlob = new Blob(slot.chunks, { type: mimeType });
+                    slot.blob = audioBlob;
+
+                    // Detener micrófono para liberar hardware
+                    stream.getTracks().forEach(track => track.stop());
+
+                    currentRecordingSlotId = null;
+
+                    // UI Actualizada
+                    btn.classList.remove('recording');
+                    btn.classList.add('ready');
+                    btn.innerText = `✅ Grabado (${formatTime(slot.seconds)})`;
+
+                    const card = document.getElementById(`slot-card-${slotId}`);
+                    card.classList.add('has-audio');
+
+                    // Reset botón de subida
+                    const uploadBtn = document.getElementById(`btn-upload-${slotId}`);
+                    uploadBtn.classList.remove('ready');
+                    document.getElementById(`btn-upload-text-${slotId}`).innerText = '📁 Subir Archivo';
+
+                    // Reproductor
+                    const player = document.getElementById(`audio-player-${slotId}`);
+                    player.src = URL.createObjectURL(audioBlob);
+                    player.style.display = 'block';
+
+                    const meta = document.getElementById(`audio-meta-${slotId}`);
+                    meta.innerText = `Audio Grabado: ${formatTime(slot.seconds)} (${(audioBlob.size / 1024).toFixed(1)} KB)`;
+                    meta.style.display = 'block';
+
+                    updateTelemetry();
+                };
+
+                // Comenzar
+                slot.mediaRecorder.start(250);
+                currentRecordingSlotId = slotId;
+
+                btn.classList.remove('ready');
+                btn.classList.add('recording');
+                btn.innerText = `🛑 Detener (00:00)`;
+
+                // Cronómetro
+                slot.timerInterval = setInterval(() => {
+                    slot.seconds++;
+                    btn.innerText = `🛑 Detener (${formatTime(slot.seconds)})`;
+                }, 1000);
+
+            } catch (err) {
+                console.error("Error al acceder al micrófono:", err);
+                alert("No se pudo acceder al micrófono. Por favor verifica los permisos del navegador.");
+            }
+        }
+
+        function formatTime(totalSeconds) {
+            const m = Math.floor(totalSeconds / 60);
+            const s = totalSeconds % 60;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        // Telemetría en vivo
+        function updateTelemetry() {
+            document.getElementById('telemetry-photo').innerText = photoFile ? 'SÍ' : 'NO';
+            
+            let audioCount = 0;
+            for (const id in slotsData) {
+                if (slotsData[id].blob || slotsData[id].file) audioCount++;
+            }
+            document.getElementById('telemetry-audios').innerText = audioCount;
+
+            const rawAttendees = document.getElementById('meeting-attendees').value.trim();
+            const attendeesCount = rawAttendees ? rawAttendees.split('\n').filter(l => l.trim().length > 0).length : 0;
+            document.getElementById('telemetry-attendees').innerText = attendeesCount;
+        }
+
+        // Envío Completo a Make Webhook
+        async function submitToMake() {
+            if (currentRecordingSlotId !== null) {
+                alert("Tienes una grabación en curso. Por favor detenla antes de enviar.");
+                return;
+            }
+
+            const place = document.getElementById('meeting-place').value.trim();
+            const rawDate = document.getElementById('meeting-date').value; // YYYY-MM-DD
+            const time = document.getElementById('meeting-time').value; // HH:mm
+            const attendees = document.getElementById('meeting-attendees').value.trim();
+
+            // Convertir Fecha a formato estricto DD-MM-YYYY
+            let formattedDate = "";
+            if (rawDate) {
+                const parts = rawDate.split('-');
+                if (parts.length === 3) {
+                    formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            }
+
+            // Recolectar audios válidos
+            const validAudios = [];
+            for (const id in slotsData) {
+                const slot = slotsData[id];
+                if (slot.blob) {
+                    validAudios.push({
+                        type: 'blob',
+                        data: slot.blob,
+                        name: `audio_pista_${id}.webm`
+                    });
+                } else if (slot.file) {
+                    validAudios.push({
+                        type: 'file',
+                        data: slot.file,
+                        name: slot.file.name
+                    });
+                }
+            }
+
+            // Validación: al menos debe existir un insumo
+            if (!photoFile && validAudios.length === 0 && !place && !attendees) {
+                alert("Ingresa al menos los datos de la reunión, una foto o una pista de audio antes de enviar.");
                 return;
             }
 
             const btn = document.getElementById('btn-submit');
-            const loader = document.getElementById('submit-loader');
-            const text = document.getElementById('submit-text');
-            const status = document.getElementById('status-msg');
+            const spinner = document.getElementById('submit-spinner');
+            const submitText = document.getElementById('submit-text');
+            const statusBox = document.getElementById('status-box');
 
             btn.disabled = true;
-            text.style.display = 'none';
-            loader.style.display = 'block';
-            status.style.display = 'none';
+            submitText.style.display = 'none';
+            spinner.style.display = 'block';
+            statusBox.className = 'status-box';
+            statusBox.style.display = 'none';
 
             try {
                 const formData = new FormData();
-                formData.append("origen", "MiniWeb Grabadora");
                 
+                // Metadatos de Reunión
+                formData.append("origen", "MiniWeb Grabadora Glucena");
+                formData.append("lugar", place);
+                formData.append("fecha", formattedDate);
+                formData.append("hora", time);
+                formData.append("asistentes", attendees);
+                formData.append("total_audios", validAudios.length);
+
+                // Foto (si existe)
                 if (photoFile) {
                     formData.append("foto", photoFile, photoFile.name);
                 }
-                
-                if (audioBlobs[1]) formData.append("audio1", audioBlobs[1], "audio1.webm");
-                if (audioBlobs[2]) formData.append("audio2", audioBlobs[2], "audio2.webm");
-                if (audioBlobs[3]) formData.append("audio3", audioBlobs[3], "audio3.webm");
+
+                // Inyección de todas las pistas de audio
+                validAudios.forEach((audio, idx) => {
+                    const audioKey = `audio${idx + 1}`;
+                    formData.append(audioKey, audio.data, audio.name);
+                    // También agregar como array múltiple para Make
+                    formData.append("audios[]", audio.data, audio.name);
+                });
 
                 const response = await fetch(MAKE_WEBHOOK_URL, {
                     method: 'POST',
@@ -376,26 +937,32 @@
                 });
 
                 if (response.ok) {
-                    status.style.color = 'var(--success)';
-                    status.innerHTML = "✅ ¡Enviado a Make con éxito!";
-                    status.style.display = 'block';
-                    
-                    // Resetear formulario (Opcional)
+                    statusBox.className = 'status-box success';
+                    statusBox.innerHTML = `
+                        🚀 <strong>¡Paquete enviado a Make con éxito!</strong><br>
+                        Fecha: ${formattedDate} | Hora: ${time}<br>
+                        Audios adjuntos: ${validAudios.length} | Foto: ${photoFile ? 'Adjunta' : 'No'}
+                    `;
+                    statusBox.style.display = 'block';
+
+                    // Opcional: resetear campos tras 4 segundos
                     setTimeout(() => {
                         window.location.reload();
-                    }, 3000);
+                    }, 4000);
+
                 } else {
-                    throw new Error("HTTP " + response.status);
+                    throw new Error(`Servidor Make respondió con estado ${response.status}`);
                 }
+
             } catch (err) {
-                console.error("Error enviando:", err);
-                status.style.color = 'var(--danger)';
-                status.innerHTML = "❌ Error al enviar: " + err.message;
-                status.style.display = 'block';
+                console.error("Error al enviar a Make:", err);
+                statusBox.className = 'status-box error';
+                statusBox.innerHTML = `❌ <strong>Error al enviar:</strong> ${err.message}. Verifica la conexión e intenta nuevamente.`;
+                statusBox.style.display = 'block';
                 btn.disabled = false;
             } finally {
-                text.style.display = 'inline';
-                loader.style.display = 'none';
+                submitText.style.display = 'inline';
+                spinner.style.display = 'none';
             }
         }
     </script>
