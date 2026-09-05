@@ -449,8 +449,12 @@ export function parseDraftIntent(text) {
   if (!text) return null;
   const lower = text.toLowerCase().trim();
 
-  // Si es intención de presentación, no interferir
+  // Si es intención de reunión o presentación, no interferir
   if (
+    parseMeetingIntent(text) ||
+    lower.includes("acta") || lower.includes("minuta") ||
+    lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión") ||
+    lower.includes("síntesis de lo hablado") || lower.includes("sintesis de lo hablado") ||
     lower.includes("presentacion") || lower.includes("presentación") ||
     lower.includes("diapositiva") || lower.includes("diapositivas") ||
     lower.includes("powerpoint") || lower.includes("pptx") ||
@@ -692,7 +696,23 @@ export default async function handler(req, res) {
     const lower = text.toLowerCase();
 
     // ==========================================
-    // 0. INTENCIÓN DE BORRADOR DE GMAIL (NUBE 24/7)
+    // 0. AUDITOR DE REUNIONES Y MINUTA EJECUTIVA (MÁXIMA PRIORIDAD)
+    // Speech-to-Action: Detecta audios o reportes de reuniones y genera Minuta Oficial .docx
+    // ==========================================
+    if (parseMeetingIntent(text)) {
+      await processMeetingDebriefFull({
+        text,
+        chatId,
+        msgId,
+        isVoice,
+        sendTelegramMessage,
+        sendTelegramDocument
+      });
+      return res.status(200).json({ ok: true, handled: "meeting_minuta" });
+    }
+
+    // ==========================================
+    // 0.2 INTENCIÓN DE BORRADOR DE GMAIL (NUBE 24/7)
     // Detección semántica inteligente para notas de voz y texto
     // ==========================================
     const draftIntent = parseDraftIntent(text);
@@ -760,22 +780,6 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({ ok: true, handled: "draft", already_created: alreadyCreated });
-    }
-
-    // ==========================================
-    // 0.2 AUDITOR DE REUNIONES Y MINUTA EJECUTIVA (60 SEGUNDOS)
-    // Speech-to-Action: Detecta audios o reportes de reuniones y genera Minuta Oficial .docx
-    // ==========================================
-    if (parseMeetingIntent(text)) {
-      await processMeetingDebriefFull({
-        text,
-        chatId,
-        msgId,
-        isVoice,
-        sendTelegramMessage,
-        sendTelegramDocument
-      });
-      return res.status(200).json({ ok: true, handled: "meeting_minuta" });
     }
 
     // ==========================================

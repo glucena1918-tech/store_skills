@@ -29,12 +29,17 @@ export function parseMeetingIntent(text) {
   if (!text) return false;
   const lower = text.toLowerCase().trim();
 
+  // Limpiar prefijos de llamada tipo "arbis", "nexus", "jarvis", "oye", etc.
+  const cleaned = lower.replace(/^(?:arbis|nexus|jarvis|oye|copiloto|bot|asistente)[\s,:]+/i, "").trim();
+
   // Comandos explícitos o frases de inicio directo de reunión
   if (
-    lower.startsWith("minuta") || lower.startsWith("/minuta") ||
-    lower.startsWith("reunion") || lower.startsWith("reunión") || lower.startsWith("/reunion") || lower.startsWith("/reunión") ||
-    lower.startsWith("acta") || lower.startsWith("/acta") ||
-    lower.startsWith("auditar") || lower.startsWith("balance de reunión") || lower.startsWith("balance de reunion")
+    cleaned.startsWith("minuta") || cleaned.startsWith("/minuta") ||
+    cleaned.startsWith("reunion") || cleaned.startsWith("reunión") || cleaned.startsWith("/reunion") || cleaned.startsWith("/reunión") ||
+    cleaned.startsWith("acta") || cleaned.startsWith("/acta") ||
+    cleaned.startsWith("genera un acta") || cleaned.startsWith("generar acta") || cleaned.startsWith("crear acta") ||
+    cleaned.startsWith("redactar acta") || cleaned.startsWith("prepara el acta") ||
+    cleaned.startsWith("auditar") || cleaned.startsWith("balance de reunión") || cleaned.startsWith("balance de reunion")
   ) {
     return true;
   }
@@ -44,15 +49,21 @@ export function parseMeetingIntent(text) {
     lower.includes("reunión") || lower.includes("reunion") || 
     lower.includes("minuta") || lower.includes("acta") || 
     lower.includes("mesa de trabajo") || lower.includes("comité") ||
-    lower.includes("junta directiva") || lower.includes("sesión de trabajo");
+    lower.includes("junta directiva") || lower.includes("sesión de trabajo") ||
+    lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión");
 
   const hasAgreementWord =
     lower.includes("acord") || lower.includes("acuerd") ||
     lower.includes("compromis") ||
-    lower.includes("responsable") || lower.includes("fecha límite") || lower.includes("plazo") ||
+    lower.includes("responsable") || lower.includes("fecha límite") || lower.includes("fecha limite") || lower.includes("plazo") ||
     lower.includes("tarea");
 
-  return hasMeetingWord && hasAgreementWord;
+  const hasStructureWord =
+    lower.includes("síntesis de lo hablado") || lower.includes("sintesis de lo hablado") ||
+    lower.includes("puntos tratados") || lower.includes("quienes asistieron");
+
+  return (hasMeetingWord && (hasAgreementWord || hasStructureWord)) || 
+         (lower.includes("acta de reunión") || lower.includes("acta de reunion") || lower.includes("minuta de reunión") || lower.includes("minuta de reunion"));
 }
 
 /**
