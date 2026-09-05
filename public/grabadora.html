@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Grabadora - Glucena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0B0C10;
+            --text-color: #C5C6C7;
+            --neon-blue: #66FCF1;
+            --neon-dark: #45A29E;
+            --danger: #FF3366;
+            --success: #33FF66;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--neon-blue);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 15px var(--neon-blue));
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(69, 162, 158, 0.05);
+            border: 1px solid var(--neon-dark);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
+            box-sizing: border-box;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-blue);
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--neon-dark);
+            padding-bottom: 5px;
+        }
+        /* Botones futuristas */
+        .btn {
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .btn:hover, .btn:active {
+            background: var(--neon-blue);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .btn.recording {
+            border-color: var(--danger);
+            color: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+        .btn.recording:hover {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 0 15px var(--danger);
+        }
+        .btn.filled {
+            background: var(--neon-blue);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
+            box-shadow: none;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 51, 102, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0); }
+        }
+        
+        /* File Input */
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: block;
+        }
+        .file-upload input[type="file"] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            font-size: 100px;
+            text-align: right;
+            filter: alpha(opacity=0);
+            opacity: 0;
+            outline: none;
+            background: white;
+            cursor: inherit;
+            display: block;
+        }
+        
+        .photo-preview {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+            border: 1px solid var(--neon-dark);
+        }
+
+        .audio-slot {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .audio-slot .btn-record {
+            flex: 1;
+        }
+        .audio-slot audio {
+            width: 100%;
+            display: none;
+            margin-top: 5px;
+            height: 40px;
+        }
+        .slot-container {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1f2833;
+            margin-bottom: 10px;
+        }
+
+        .btn-submit {
+            margin-top: 30px;
+            padding: 15px;
+            font-size: 1.1rem;
+            background: var(--neon-blue);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--neon-blue);
+            border: none;
+        }
+        
+        .status-msg {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: var(--success);
+            display: none;
+            font-weight: 600;
+        }
+        
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(102, 252, 241, 0.3);
+            border-top: 3px solid var(--neon-blue);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <h1>Grabadora<br>Glucena</h1>
+    <img src="/logo.png" alt="Glucena Logo" class="logo">
+
+    <div class="container">
+        
+        <!-- FOTO -->
+        <div class="section">
+            <div class="section-title">1. FOTO DE LA PIZARRA</div>
+            <div class="file-upload btn" id="btn-photo">
+                <span>📸 TOMAR / SUBIR FOTO</span>
+                <input type="file" id="photo-input" accept="image/*" capture="environment">
+            </div>
+            <img id="photo-preview" class="photo-preview">
+        </div>
+
+        <!-- AUDIOS -->
+        <div class="section">
+            <div class="section-title">2. GRABACIÓN DE AUDIO</div>
+            
+            <div class="slot-container" id="slot-1">
+                <button class="btn btn-record" id="rec-btn-1" onclick="toggleRecord(1)">🎙️ Pista 1 (Libre)</button>
+                <audio id="audio-playback-1" controls></audio>
+            </div>
+
+            <div class="slot-container" id="slot-2">
+                <button class="btn btn-record" id="rec-btn-2" onclick="toggleRecord(2)">🎙️ Pista 2 (Libre)</button>
+                <audio id="audio-playback-2" controls></audio>
+            </div>
+
+            <div class="slot-container" id="slot-3">
+                <button class="btn btn-record" id="rec-btn-3" onclick="toggleRecord(3)">🎙️ Pista 3 (Libre)</button>
+                <audio id="audio-playback-3" controls></audio>
+            </div>
+        </div>
+
+        <!-- ENVIAR -->
+        <button class="btn btn-submit" id="btn-submit" onclick="submitToMake()">
+            <span id="submit-text">🚀 ENVIAR A MAKE</span>
+            <div class="loader" id="submit-loader"></div>
+        </button>
+        <div id="status-msg" class="status-msg"></div>
+
+    </div>
+
+    <script>
+        const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
+        
+        let photoFile = null;
+        let audioBlobs = {
+            1: null,
+            2: null,
+            3: null
+        };
+        let mediaRecorders = {
+            1: null,
+            2: null,
+            3: null
+        };
+        let audioChunks = {
+            1: [],
+            2: [],
+            3: []
+        };
+        let currentRecordingSlot = null;
+
+        // Preview Photo
+        document.getElementById('photo-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                photoFile = file;
+                const preview = document.getElementById('photo-preview');
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+                document.getElementById('btn-photo').classList.add('filled');
+                document.getElementById('btn-photo').querySelector('span').innerText = '✅ FOTO CARGADA';
+            }
+        });
+
+        async function toggleRecord(slotNumber) {
+            const btn = document.getElementById(`rec-btn-${slotNumber}`);
+            
+            // Si ya estamos grabando en este slot, detenerlo
+            if (currentRecordingSlot === slotNumber) {
+                mediaRecorders[slotNumber].stop();
+                return;
+            }
+
+            // Si hay otro grabando, avisar
+            if (currentRecordingSlot !== null) {
+                alert("Ya hay una grabación en progreso en la Pista " + currentRecordingSlot);
+                return;
+            }
+
+            // Iniciar nueva grabación
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorders[slotNumber] = new MediaRecorder(stream);
+                audioChunks[slotNumber] = [];
+
+                mediaRecorders[slotNumber].ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks[slotNumber].push(e.data);
+                };
+
+                mediaRecorders[slotNumber].onstop = () => {
+                    const audioBlob = new Blob(audioChunks[slotNumber], { type: 'audio/webm' }); // Use webm as it is standard in Chrome/Android
+                    audioBlobs[slotNumber] = audioBlob;
+                    
+                    // Cleanup stream
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // UI Update
+                    currentRecordingSlot = null;
+                    btn.classList.remove('recording');
+                    btn.classList.add('filled');
+                    btn.innerHTML = `✅ Pista ${slotNumber} (Lista)`;
+                    
+                    // Playback setup
+                    const playback = document.getElementById(`audio-playback-${slotNumber}`);
+                    playback.src = URL.createObjectURL(audioBlob);
+                    playback.style.display = 'block';
+                };
+
+                // Start recording
+                mediaRecorders[slotNumber].start();
+                currentRecordingSlot = slotNumber;
+                
+                // UI Update
+                btn.classList.add('recording');
+                btn.innerHTML = `🛑 Detener (Grabando...)`;
+
+            } catch (err) {
+                console.error("Error accessing microphone:", err);
+                alert("Error al acceder al micrófono. Por favor permite los permisos.");
+            }
+        }
+
+        async function submitToMake() {
+            if (currentRecordingSlot !== null) {
+                alert("Detén la grabación actual antes de enviar.");
+                return;
+            }
+
+            if (!photoFile && !audioBlobs[1] && !audioBlobs[2] && !audioBlobs[3]) {
+                alert("Por favor añade al menos una foto o un audio antes de enviar.");
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit');
+            const loader = document.getElementById('submit-loader');
+            const text = document.getElementById('submit-text');
+            const status = document.getElementById('status-msg');
+
+            btn.disabled = true;
+            text.style.display = 'none';
+            loader.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append("origen", "MiniWeb Grabadora");
+                
+                if (photoFile) {
+                    formData.append("foto", photoFile, photoFile.name);
+                }
+                
+                if (audioBlobs[1]) formData.append("audio1", audioBlobs[1], "audio1.webm");
+                if (audioBlobs[2]) formData.append("audio2", audioBlobs[2], "audio2.webm");
+                if (audioBlobs[3]) formData.append("audio3", audioBlobs[3], "audio3.webm");
+
+                const response = await fetch(MAKE_WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    status.style.color = 'var(--success)';
+                    status.innerHTML = "✅ ¡Enviado a Make con éxito!";
+                    status.style.display = 'block';
+                    
+                    // Resetear formulario (Opcional)
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    throw new Error("HTTP " + response.status);
+                }
+            } catch (err) {
+                console.error("Error enviando:", err);
+                status.style.color = 'var(--danger)';
+                status.innerHTML = "❌ Error al enviar: " + err.message;
+                status.style.display = 'block';
+                btn.disabled = false;
+            } finally {
+                text.style.display = 'inline';
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
