@@ -60,7 +60,10 @@ export function parseMeetingIntent(text) {
     cleaned.startsWith("prepara un acta") || cleaned.startsWith("prepara una minuta") ||
     cleaned.startsWith("genera un acta") || cleaned.startsWith("generar acta") || cleaned.startsWith("crear acta") ||
     cleaned.startsWith("redactar acta") || cleaned.startsWith("prepara el acta") ||
-    cleaned.startsWith("auditar") || cleaned.startsWith("balance de reunión") || cleaned.startsWith("balance de reunion")
+    cleaned.startsWith("auditar") || cleaned.startsWith("balance de reunión") || cleaned.startsWith("balance de reunion") ||
+    cleaned.startsWith("resumen de una reunion") || cleaned.startsWith("resumen de una reunión") ||
+    cleaned.startsWith("resumen de la reunion") || cleaned.startsWith("resumen de la reunión") ||
+    cleaned.startsWith("hacer el resumen de")
   ) {
     return true;
   }
@@ -71,13 +74,23 @@ export function parseMeetingIntent(text) {
     lower.includes("minuta") || lower.includes("acta") || 
     lower.includes("mesa de trabajo") || lower.includes("comité") ||
     lower.includes("junta directiva") || lower.includes("sesión de trabajo") ||
-    lower.includes("quienes estuvieron presentes") || lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión");
+    lower.includes("quienes estuvieron presentes") || lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión") ||
+    lower.includes("hice una prueba referente a hacer el resumen") || lower.includes("resumen de la reunión");
 
   const hasAgreementWord =
     lower.includes("acord") || lower.includes("acuerd") ||
     lower.includes("compromis") ||
     lower.includes("responsable") || lower.includes("fecha límite") || lower.includes("fecha limite") || lower.includes("plazo") ||
     lower.includes("tarea");
+
+  if (hasMeetingWord && hasAgreementWord) {
+    return true;
+  }
+  
+  // Si contiene acciones típicas de minuta combinadas
+  if (hasMeetingWord && (lower.includes("agendar actividades") || lower.includes("enviar correo") || lower.includes("próximos pasos") || lower.includes("proximos pasos"))) {
+      return true;
+  }
 
   const hasStructureWord =
     lower.includes("síntesis de lo hablado") || lower.includes("sintesis de lo hablado") ||
