@@ -775,7 +775,7 @@ export default async function handler(req, res) {
              return res.status(200).json({ ok: true, handled: "make_upload_error" });
           }
 
-          const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
+          const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL || "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
           if (!MAKE_WEBHOOK_URL) {
              await sendTelegramMessage(chatId, `⚠️ *Falta Webhook:*\nPor favor, ve a Vercel y añade la variable de entorno \`MAKE_WEBHOOK_URL\` con la URL de tu primer nodo rosado de Make.\n\n_Tus archivos están listos en:_ \n📸 [Descargar Foto](${photoUrl})\n🎙️ [Descargar Audio](${audioUrl})`);
              return res.status(200).json({ ok: true, handled: "make_missing_env" });
