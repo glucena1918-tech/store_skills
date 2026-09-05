@@ -147,6 +147,104 @@ export default async function handler(req, res) {
     // Enviar mensaje a Telegram
     await sendTelegramMessage(ALLOWED_CHAT_ID, reportText);
 
+    // Despacho 24/7 en la nube: Briefing Global IA (06:00 AM Caracas)
+    try {
+      const pendingJsonUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/briefing_ia_pending.json?t=${Date.now()}`;
+      const pendingAudioUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/briefing_ia_pending.mp3?t=${Date.now()}`;
+
+      const pRes = await fetch(pendingJsonUrl, {
+        headers: {
+          "apikey": SUPABASE_SERVICE_ROLE_KEY,
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+        }
+      });
+
+      if (pRes.ok) {
+        const pkg = await pRes.json();
+        // Si hay un paquete pendiente para hoy o para la fecha objetivo
+        if (!pkg.delivered) {
+          console.log(`[06:00 AM CRON] Despachando Briefing Global IA desde Supabase (Fecha: ${pkg.target_date || pkg.display_date})...`);
+
+          // 1. Enviar mensaje de texto formateado
+          if (pkg.telegram_html) {
+            const urlMsg = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            const msgRes = await fetch(urlMsg, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: ALLOWED_CHAT_ID,
+                text: pkg.telegram_html.slice(0, 4000),
+                parse_mode: "HTML",
+                disable_web_page_preview: true
+              })
+            });
+            if (!msgRes.ok) {
+              await fetch(urlMsg, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: ALLOWED_CHAT_ID,
+                  text: pkg.telegram_html.replace(/<[^>]+>/g, "").slice(0, 4000)
+                })
+              });
+            }
+          }
+
+          // 2. Enviar audio MP3 de Paola
+          const audioRes = await fetch(pendingAudioUrl, {
+            headers: {
+              "apikey": SUPABASE_SERVICE_ROLE_KEY,
+              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+            }
+          });
+
+          if (audioRes.ok) {
+            const audioBuf = Buffer.from(await audioRes.arrayBuffer());
+            const urlAudio = `https://api.telegram.org/bot${BOT_TOKEN}/sendAudio`;
+            const formData = new FormData();
+            const blob = new Blob([audioBuf], { type: "audio/mpeg" });
+
+            formData.append("chat_id", ALLOWED_CHAT_ID);
+            formData.append("audio", blob, "briefing_paola.mp3");
+            formData.append("caption", `🎙️ <b>Briefing Global IA (${pkg.display_date || ""})</b>\n<i>Voz Oficial: Paola (NEXUS)</i>`);
+            formData.append("parse_mode", "HTML");
+            formData.append("title", `Briefing Global IA (${pkg.display_date || ""})`);
+            formData.append("performer", "Paola (NEXUS)");
+
+            const aResp = await fetch(urlAudio, { method: "POST", body: formData });
+            if (!aResp.ok) {
+              // Fallback a sendVoice
+              const urlVoice = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+              const fVoice = new FormData();
+              fVoice.append("chat_id", ALLOWED_CHAT_ID);
+              fVoice.append("voice", blob, "briefing_paola.mp3");
+              fVoice.append("caption", `🎙️ Briefing Global IA (${pkg.display_date || ""}) - Paola`);
+              await fetch(urlVoice, { method: "POST", body: fVoice });
+            }
+          }
+
+          // 3. Marcar como entregado en Supabase
+          pkg.delivered = true;
+          pkg.delivered_at = new Date().toISOString();
+          pkg.delivered_by = "vercel_cloud_cron_0600";
+
+          await fetch(`${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/briefing_ia_pending.json`, {
+            method: "PUT",
+            headers: {
+              "apikey": SUPABASE_SERVICE_ROLE_KEY,
+              "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+              "x-upsert": "true"
+            },
+            body: JSON.stringify(pkg)
+          });
+          console.log("[06:00 AM CRON] Briefing Global IA entregado exitosamente a Telegram.");
+        }
+      }
+    } catch (briefingErr) {
+      console.error("Error en despacho de Briefing IA dentro de weather_cron:", briefingErr);
+    }
+
     // Registrar estado en Supabase Storage para evitar duplicados
     const todayStr = new Date().toISOString().split("T")[0];
     const cacheUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/last_weather_report.json`;
