@@ -154,6 +154,29 @@ async function uploadPptxToSupabase(filename, buffer) {
   return null;
 }
 
+async function uploadMediaToSupabase(filename, buffer, contentType) {
+  try {
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/media/${filename}`;
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": contentType,
+        "cache-control": "0",
+        "x-upsert": "true"
+      },
+      body: buffer
+    });
+    if (res.ok) {
+      return `${SUPABASE_URL}/storage/v1/object/public/nexus_buffer/media/${filename}?t=${Date.now()}`;
+    }
+  } catch (e) {
+    console.error("Error subiendo media a Supabase:", e);
+  }
+  return null;
+}
+
 async function getCachedTasks() {
   try {
     const url = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/latest_tasks.json?t=${Date.now()}`;
@@ -731,6 +754,62 @@ export default async function handler(req, res) {
     // ==========================================
     if (msg.voice) {
       isVoice = true;
+
+      // === FLUJO MAKE DIRECTO (FOTO + AUDIO) ===
+      if (msg.reply_to_message && msg.reply_to_message.photo) {
+        try {
+          await sendTelegramMessage(chatId, "🚀 _Foto y Audio detectados. Subiendo a Supabase y disparando automatización Make..._");
+          
+          const photoArray = msg.reply_to_message.photo;
+          const bestPhoto = photoArray[photoArray.length - 1];
+          
+          const photoBuffer = await downloadTelegramFile(bestPhoto.file_id);
+          const audioBuffer = await downloadTelegramFile(msg.voice.file_id);
+          
+          const ts = Date.now();
+          const photoUrl = await uploadMediaToSupabase(`foto_${ts}.jpg`, photoBuffer, "image/jpeg");
+          const audioUrl = await uploadMediaToSupabase(`audio_${ts}.oga`, audioBuffer, "audio/ogg");
+          
+          if (!photoUrl || !audioUrl) {
+             await sendTelegramMessage(chatId, "❌ _Error: No se pudieron generar las URLs públicas en Supabase._");
+             return res.status(200).json({ ok: true, handled: "make_upload_error" });
+          }
+
+          const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
+          if (!MAKE_WEBHOOK_URL) {
+             await sendTelegramMessage(chatId, `⚠️ *Falta Webhook:*\nPor favor, ve a Vercel y añade la variable de entorno \`MAKE_WEBHOOK_URL\` con la URL de tu primer nodo rosado de Make.\n\n_Tus archivos están listos en:_ \n📸 [Descargar Foto](${photoUrl})\n🎙️ [Descargar Audio](${audioUrl})`);
+             return res.status(200).json({ ok: true, handled: "make_missing_env" });
+          }
+          
+          const makePayload = {
+            foto_url: photoUrl,
+            audio_url: audioUrl,
+            titulo: "Reunión enviada desde Telegram (JARVIS)",
+            origen: "Telegram"
+          };
+
+          const makeRes = await fetch(MAKE_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(makePayload)
+          });
+
+          if (makeRes.ok) {
+             await sendTelegramMessage(chatId, "✅ *¡Enviado a Make con éxito!*\n\nTu automatización ya tiene la foto y el audio trabajando en la nube. ¡Bien hecho!");
+             await sendPaolaVoiceNote(chatId, "Comandante, la foto y el audio han sido enviados exitosamente a su automatización de Make. Puede continuar con sus labores.", "🎙️ *Voz de Confirmación (Paola)*");
+          } else {
+             await sendTelegramMessage(chatId, `❌ *Error disparando Make:*\nCódigo HTTP ${makeRes.status}`);
+          }
+          
+          return res.status(200).json({ ok: true, handled: "make_success" });
+        } catch (makeErr) {
+          console.error("Error en flujo Make:", makeErr);
+          await sendTelegramMessage(chatId, `❌ Error crítico en flujo Make: ${makeErr.message}`);
+          return res.status(200).json({ ok: false, error: makeErr.message });
+        }
+      }
+      // === FIN FLUJO MAKE DIRECTO ===
+
       try {
         await sendTelegramMessage(chatId, "🎙️ _Escuchando nota de voz con OpenAI Whisper..._");
         const audioBuffer = await downloadTelegramFile(msg.voice.file_id);
