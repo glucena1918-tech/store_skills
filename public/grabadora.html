@@ -623,18 +623,65 @@
             document.getElementById('meeting-time').value = `${hours}:${minutes}`;
         }
 
+        // Función de compresión automática de imágenes (reduce 4MB a ~200KB sin perder nitidez)
+        function compressImage(file, maxWidth = 1600, quality = 0.75) {
+            return new Promise((resolve) => {
+                // Si el archivo ya es menor a 250KB, no necesita compresión
+                if (file.size <= 250 * 1024) {
+                    resolve(file);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                resolve(file);
+                                return;
+                            }
+                            const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressed);
+                        }, 'image/jpeg', quality);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         // Gestión de Foto
-        document.getElementById('photo-input').addEventListener('change', function(e) {
+        document.getElementById('photo-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
-                photoFile = file;
+                const btn = document.getElementById('btn-photo');
+                document.getElementById('btn-photo-text').innerText = '⏳ Optimizando foto...';
+                
+                // Comprimir automáticamente
+                const optimizedFile = await compressImage(file);
+                photoFile = optimizedFile;
+
                 const preview = document.getElementById('photo-preview');
-                preview.src = URL.createObjectURL(file);
+                preview.src = URL.createObjectURL(optimizedFile);
                 document.getElementById('photo-preview-container').style.display = 'block';
                 
-                const btn = document.getElementById('btn-photo');
                 btn.classList.add('ready');
-                document.getElementById('btn-photo-text').innerText = `✅ FOTO: ${file.name.substring(0, 18)}...`;
+                const kb = (optimizedFile.size / 1024).toFixed(0);
+                document.getElementById('btn-photo-text').innerText = `✅ FOTO (${kb} KB)`;
                 updateTelemetry();
             }
         });
