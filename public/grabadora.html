@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Grabadora - Glucena</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/lame.min.js"></script>
     <style>
         :root {
             color-scheme: dark;
@@ -670,6 +671,85 @@
             });
         }
 
+        // Función de compresión automática de audio a MP3 optimizado para Whisper (reduce 25MB a ~4MB)
+        async function compressAudio(file, onProgress) {
+            // Si el archivo ya es menor a 1.5MB y es mp3 o webm, no necesita recodificación
+            if (file.size <= 1.5 * 1024 * 1024 && (file.type.includes('mp3') || file.type.includes('webm') || file.name.toLowerCase().endsWith('.mp3'))) {
+                return file;
+            }
+
+            try {
+                if (typeof lamejs === 'undefined' || !lamejs.Mp3Encoder) {
+                    console.warn("lamejs no disponible, manteniendo archivo original");
+                    return file;
+                }
+
+                if (onProgress) onProgress("Decodificando...");
+
+                const arrayBuffer = await file.arrayBuffer();
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContextClass();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                
+                const duration = audioBuffer.duration; // en segundos
+                if (onProgress) onProgress(`Remuestreando a 16kHz...`);
+
+                // Resamplear a 16,000 Hz Mono (estándar nativo de OpenAI Whisper)
+                const targetSampleRate = 16000;
+                const offlineCtx = new OfflineAudioContext(1, Math.ceil(duration * targetSampleRate), targetSampleRate);
+                const source = offlineCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineCtx.destination);
+                source.start(0);
+
+                const resampledBuffer = await offlineCtx.startRendering();
+                const channelData = resampledBuffer.getChannelData(0); // Float32Array
+
+                // Convertir Float32Array (-1.0 a 1.0) a Int16Array (-32768 a 32767)
+                const numSamples = channelData.length;
+                const pcm16 = new Int16Array(numSamples);
+                for (let i = 0; i < numSamples; i++) {
+                    let s = Math.max(-1, Math.min(1, channelData[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // Bitrate inteligente: si el audio supera 15 min (900s), usamos 24 kbps; si es más corto, 32 kbps
+                const bitrate = duration > 900 ? 24 : 32;
+
+                if (onProgress) onProgress(`Comprimiendo (${bitrate}k)...`);
+
+                const encoder = new lamejs.Mp3Encoder(1, targetSampleRate, bitrate);
+                const mp3Data = [];
+                const sampleBlockSize = 1152;
+
+                for (let i = 0; i < numSamples; i += sampleBlockSize) {
+                    const chunk = pcm16.subarray(i, i + sampleBlockSize);
+                    const mp3buf = encoder.encodeBuffer(chunk);
+                    if (mp3buf.length > 0) {
+                        mp3Data.push(mp3buf);
+                    }
+                }
+
+                const flushBuf = encoder.flush();
+                if (flushBuf.length > 0) {
+                    mp3Data.push(flushBuf);
+                }
+
+                const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
+                const cleanName = file.name.replace(/\.[^/.]+$/, "") + ".mp3";
+                const compressedFile = new File([mp3Blob], cleanName, {
+                    type: 'audio/mp3',
+                    lastModified: Date.now()
+                });
+
+                return compressedFile;
+
+            } catch (err) {
+                console.error("Error al comprimir audio, usando archivo original:", err);
+                return file;
+            }
+        }
+
         // Gestión de Foto
         document.getElementById('photo-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
@@ -771,40 +851,58 @@
             }
         }
 
-        // Subida de archivo pregrabado
-        function handleAudioUpload(event, slotId) {
+        // Subida y compresión automática de archivo pregrabado
+        async function handleAudioUpload(event, slotId) {
             const file = event.target.files[0];
             if (!file) return;
 
             const slot = slotsData[slotId];
-            slot.file = file;
-            slot.blob = null; // Priorizar archivo
-
             const card = document.getElementById(`slot-card-${slotId}`);
             card.classList.add('has-audio');
 
             const uploadBtn = document.getElementById(`btn-upload-${slotId}`);
-            uploadBtn.classList.add('ready');
-            document.getElementById(`btn-upload-text-${slotId}`).innerText = `✅ ${file.name.substring(0, 10)}...`;
+            const uploadBtnText = document.getElementById(`btn-upload-text-${slotId}`);
+            uploadBtn.classList.remove('ready');
+            uploadBtn.style.opacity = '0.7';
+            uploadBtnText.innerText = `⏳ Optimizando...`;
 
             // Resetear botón de grabación si estaba marcado
             const recBtn = document.getElementById(`btn-rec-${slotId}`);
             recBtn.classList.remove('ready');
             recBtn.innerText = '🎙️ Grabar';
 
+            const originalMb = (file.size / (1024 * 1024)).toFixed(1);
+
+            // Comprimir automáticamente a MP3 16kHz mono para Whisper
+            const optimizedFile = await compressAudio(file, (msg) => {
+                uploadBtnText.innerText = `⏳ ${msg.substring(0, 16)}...`;
+            });
+
+            slot.file = optimizedFile;
+            slot.blob = null; // Priorizar archivo optimizado
+
+            const optimizedMb = (optimizedFile.size / (1024 * 1024)).toFixed(1);
+            uploadBtn.classList.add('ready');
+            uploadBtn.style.opacity = '1';
+            uploadBtnText.innerText = `✅ ${optimizedFile.name.substring(0, 12)}...`;
+
             // Mostrar en el reproductor
             const player = document.getElementById(`audio-player-${slotId}`);
-            player.src = URL.createObjectURL(file);
+            player.src = URL.createObjectURL(optimizedFile);
             player.style.display = 'block';
 
             const meta = document.getElementById(`audio-meta-${slotId}`);
-            meta.innerText = `Archivo: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+            if (file.size !== optimizedFile.size) {
+                meta.innerHTML = `Audio Optimizado: <strong>${optimizedFile.name}</strong><br><span style="color:var(--neon-blue);">Reducido: ${originalMb} MB ➔ ${optimizedMb} MB (-${Math.round((1 - optimizedFile.size/file.size)*100)}%)</span>`;
+            } else {
+                meta.innerText = `Archivo: ${optimizedFile.name} (${optimizedMb} MB)`;
+            }
             meta.style.display = 'block';
 
             updateTelemetry();
         }
 
-        // Grabación de Micrófono en vivo
+        // Grabación de Micrófono en vivo (Optimizada para Whisper y Make a 24kbps)
         async function toggleRecord(slotId) {
             const slot = slotsData[slotId];
             const btn = document.getElementById(`btn-rec-${slotId}`);
@@ -823,24 +921,38 @@
                 return;
             }
 
-            // Iniciar Grabación
+            // Iniciar Grabación con captura de voz mono optimizada
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
                 slot.chunks = [];
                 slot.seconds = 0;
                 slot.file = null; // Sobrescribir subida si graba
 
                 // Seleccionar mimeType compatible
-                let mimeType = 'audio/webm';
-                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                    mimeType = 'audio/webm;codecs=opus';
-                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                    mimeType = 'audio/mp4';
-                } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-                    mimeType = 'audio/ogg';
+                let mimeType = 'audio/webm;codecs=opus';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+                    else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                    else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
                 }
 
-                slot.mediaRecorder = new MediaRecorder(stream, { mimeType });
+                // Bitrate de 24 kbps para compresión máxima de voz (25 min = ~4.5 MB)
+                try {
+                    slot.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: mimeType,
+                        audioBitsPerSecond: 24000
+                    });
+                } catch (e) {
+                    slot.mediaRecorder = new MediaRecorder(stream, { mimeType });
+                }
 
                 slot.mediaRecorder.ondataavailable = e => {
                     if (e.data && e.data.size > 0) {
