@@ -512,6 +512,12 @@
                 <span>📋</span> 1. DATOS DE LA REUNIÓN
             </div>
 
+            <!-- Título / Motivo de la Reunión -->
+            <div class="form-group">
+                <label for="meeting-title">📌 Título / Motivo de la Reunión</label>
+                <input type="text" id="meeting-title" class="form-control" placeholder="Ej: Reunión Operativa CUSPAL / Revisión CxC / Junta Directiva">
+            </div>
+
             <!-- Lugar -->
             <div class="form-group">
                 <label for="meeting-place">📍 Lugar de la Reunión</label>
@@ -945,6 +951,7 @@
                 return;
             }
 
+            const title = document.getElementById('meeting-title') ? document.getElementById('meeting-title').value.trim() : "";
             const place = document.getElementById('meeting-place').value.trim();
             const rawDate = document.getElementById('meeting-date').value; // YYYY-MM-DD
             const time = document.getElementById('meeting-time').value; // HH:mm
@@ -984,7 +991,7 @@
             }
 
             // Validación: al menos debe existir un insumo
-            if (!photoFile && validAudios.length === 0 && !place && !attendees) {
+            if (!photoFile && validAudios.length === 0 && !title && !place && !attendees) {
                 alert("Ingresa al menos los datos de la reunión, una foto o una pista de audio antes de enviar.");
                 return;
             }
@@ -1021,7 +1028,10 @@
                 
                 // Metadatos de Reunión
                 formData.append("origen", "MiniWeb Grabadora Glucena");
+                formData.append("titulo", title);
+                formData.append("nombre_reunion", title);
                 formData.append("lugar", place);
+                formData.append("lugar_reunion", place);
                 formData.append("fecha", formattedDate);
                 formData.append("hora", time);
                 formData.append("asistentes", attendees);
