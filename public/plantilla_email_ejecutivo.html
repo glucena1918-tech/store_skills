@@ -218,6 +218,36 @@
             border-radius: 10px;
             resize: vertical;
         }
+
+        /* Áreas Editables en Vista Previa */
+        [contenteditable]:focus {
+            outline: 2px dashed rgba(37, 99, 235, 0.5) !important;
+            outline-offset: 4px;
+            border-radius: 4px;
+        }
+
+        .editable-name:empty::before {
+            content: "[Nombre]";
+            color: #94A3B8;
+            font-weight: normal;
+            font-style: italic;
+        }
+
+        .editable-body:empty::before,
+        .editable-body p:only-child:empty::before {
+            content: "✍️ Haga clic aquí para escribir el texto de su correo (área de texto libre)...";
+            color: #94A3B8;
+            font-style: italic;
+            display: block;
+        }
+
+        .editable-card:empty::before,
+        .editable-card p:only-child:empty::before {
+            content: "📌 Área editable con marco cobalto: haga clic aquí para redactar puntos clave, notas o acuerdos...";
+            color: #94A3B8;
+            font-style: italic;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -263,12 +293,9 @@
                                     <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                         <tr>
                                             <td valign="middle" align="left">
-                                                <!-- Marca / Título Institucional -->
-                                                <div style="font-family: 'Montserrat', 'Inter', Arial, sans-serif; font-size: 19px; font-weight: 800; color: #FFFFFF; letter-spacing: 0.5px; text-transform: uppercase;">
+                                                <!-- Marca Institucional Única -->
+                                                <div style="font-family: 'Montserrat', 'Inter', Arial, sans-serif; font-size: 21px; font-weight: 800; color: #FFFFFF; letter-spacing: 0.5px; text-transform: uppercase;">
                                                     GHLL Soluciones
-                                                </div>
-                                                <div style="font-size: 12px; font-weight: 500; color: #93C5FD; letter-spacing: 0.8px; margin-top: 4px; text-transform: uppercase;">
-                                                    Despacho Ejecutivo & Consultoría Estratégica
                                                 </div>
                                             </td>
                                             <td valign="middle" align="right" width="60">
@@ -284,7 +311,7 @@
                             <tr>
                                 <td style="padding: 34px 32px 28px 32px; color: #1E293B; line-height: 1.65; font-size: 15px;">
                                     
-                                    <!-- Badge de Tipo de Comunicación (Opcional para dar jerarquía) -->
+                                    <!-- Badge de Tipo de Comunicación -->
                                     <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
                                         <tr>
                                             <td style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #1D4ED8; letter-spacing: 0.6px; text-transform: uppercase;">
@@ -293,48 +320,23 @@
                                         </tr>
                                     </table>
 
-                                    <!-- Saludo -->
-                                    <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #0F1E36;">
-                                        Estimado(a) colega / cliente,
+                                    <!-- Saludo con Destinatario Editable -->
+                                    <p style="margin: 0 0 18px 0; font-size: 16px; font-weight: 600; color: #0F1E36;">
+                                        Estimado(a) <span contenteditable="true" class="editable-name" style="outline: none; color: #0F1E36; min-width: 50px; display: inline-block;"></span>,
                                     </p>
 
-                                    <!-- Párrafos Principales -->
-                                    <p style="margin: 0 0 16px 0; color: #334155;">
-                                        Espero que se encuentre excelente. Me comunico cordialmente con el objetivo de compartir las actualizaciones correspondientes a nuestras operaciones en curso y coordinar las acciones estratégicas acordadas.
-                                    </p>
+                                    <!-- Área de Texto Libre (En Blanco / Editable) -->
+                                    <div contenteditable="true" class="editable-body" style="margin: 0 0 24px 0; color: #334155; font-size: 15px; line-height: 1.65; min-height: 80px; outline: none;">
+                                        <p style="margin: 0 0 16px 0; color: #334155;"><br></p>
+                                    </div>
 
-                                    <p style="margin: 0 0 24px 0; color: #334155;">
-                                        A continuación, detallo los puntos focales y compromisos de avance para su oportuna revisión:
-                                    </p>
-
-                                    <!-- 3. BLOQUE DE DESTACADOS / PUNTOS CLAVE (TARJETA COBALTO SUAVE) -->
+                                    <!-- 3. BLOQUE DE DESTACADOS / TARJETA EDITABLE CON ESTILO COBALTO -->
                                     <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #F8FAFC; border-left: 4px solid #2563EB; border-radius: 8px; margin: 0 0 24px 0; border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;">
                                         <tr>
-                                            <td style="padding: 20px 22px;">
-                                                <div style="font-size: 13px; font-weight: 700; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
-                                                    🎯 PUNTOS CLAVE & ENTREGABLES
+                                            <td style="padding: 18px 22px;">
+                                                <div contenteditable="true" class="editable-card" style="min-height: 60px; font-size: 14px; line-height: 1.6; color: #334155; outline: none;">
+                                                    <p style="margin: 0; color: #334155;"><br></p>
                                                 </div>
-                                                
-                                                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="font-size: 14px; line-height: 1.6; color: #334155;">
-                                                    <tr>
-                                                        <td width="24" valign="top" style="padding-bottom: 10px; color: #2563EB; font-weight: bold;">✔</td>
-                                                        <td style="padding-bottom: 10px;">
-                                                            <strong style="color: #0F1E36;">Punto de Control 1:</strong> Consolidación de información operativa y revisión técnica completada satisfactoriamente.
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td width="24" valign="top" style="padding-bottom: 10px; color: #2563EB; font-weight: bold;">✔</td>
-                                                        <td style="padding-bottom: 10px;">
-                                                            <strong style="color: #0F1E36;">Próximo Hito:</strong> Validación de acuerdos y cronograma de ejecución para la fase inmediata.
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td width="24" valign="top" style="color: #2563EB; font-weight: bold;">✔</td>
-                                                        <td>
-                                                            <strong style="color: #0F1E36;">Soporte Permanente:</strong> Seguimiento directo a través de nuestros canales ejecutivos autorizados.
-                                                        </td>
-                                                    </tr>
-                                                </table>
                                             </td>
                                         </tr>
                                     </table>
