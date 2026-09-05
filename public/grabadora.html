@@ -569,11 +569,12 @@
             </button>
         </section>
 
-        <!-- RESUMEN DE ELEMENTOS CARGADOS -->
+        <!-- RESUMEN DE ELEMENTOS CARGADOS Y PESO -->
         <div class="summary-bar">
             <div>FOTO: <span id="telemetry-photo">NO</span></div>
             <div>PISTAS: <span id="telemetry-audios">0</span></div>
             <div>ASISTENTES: <span id="telemetry-attendees">0</span></div>
+            <div>PESO: <span id="telemetry-size">0.0 MB</span> <small>(Máx 8MB Make)</small></div>
         </div>
 
         <!-- BOTÓN MAESTRO DE ENVÍO -->
@@ -868,6 +869,26 @@
             const rawAttendees = document.getElementById('meeting-attendees').value.trim();
             const attendeesCount = rawAttendees ? rawAttendees.split('\n').filter(l => l.trim().length > 0).length : 0;
             document.getElementById('telemetry-attendees').innerText = attendeesCount;
+
+            // Calcular peso total
+            let totalBytes = 0;
+            if (photoFile) totalBytes += photoFile.size;
+            for (const id in slotsData) {
+                if (slotsData[id].blob) totalBytes += slotsData[id].blob.size;
+                if (slotsData[id].file) totalBytes += slotsData[id].file.size;
+            }
+            const mb = (totalBytes / (1024 * 1024)).toFixed(1);
+            const sizeEl = document.getElementById('telemetry-size');
+            if (sizeEl) {
+                sizeEl.innerText = `${mb} MB`;
+                if (totalBytes > 8.5 * 1024 * 1024) {
+                    sizeEl.style.color = 'var(--danger)';
+                    sizeEl.title = '⚠️ Excede el límite de 8MB de Make';
+                } else {
+                    sizeEl.style.color = 'var(--neon-blue)';
+                    sizeEl.title = 'Dentro del límite aceptado';
+                }
+            }
         }
 
         // Envío Completo a Make Webhook
@@ -891,17 +912,22 @@
                 }
             }
 
-            // Recolectar audios válidos
+            // Recolectar audios válidos y calcular peso total
             const validAudios = [];
+            let totalSizeBytes = 0;
+            if (photoFile) totalSizeBytes += photoFile.size;
+
             for (const id in slotsData) {
                 const slot = slotsData[id];
                 if (slot.blob) {
+                    totalSizeBytes += slot.blob.size;
                     validAudios.push({
                         type: 'blob',
                         data: slot.blob,
                         name: `audio_pista_${id}.webm`
                     });
                 } else if (slot.file) {
+                    totalSizeBytes += slot.file.size;
                     validAudios.push({
                         type: 'file',
                         data: slot.file,
@@ -920,6 +946,22 @@
             const spinner = document.getElementById('submit-spinner');
             const submitText = document.getElementById('submit-text');
             const statusBox = document.getElementById('status-box');
+
+            // GUARDIA DE TAMAÑO: Make Custom Webhook rechaza con 413 si supera 8.5MB
+            const totalMb = (totalSizeBytes / (1024 * 1024)).toFixed(1);
+            if (totalSizeBytes > 8.5 * 1024 * 1024) {
+                statusBox.className = 'status-box error';
+                statusBox.innerHTML = `
+                    ⚠️ <strong>LÍMITE DE TAMAÑO DE MAKE EXCEDIDO:</strong><br><br>
+                    El paquete total pesa <strong>${totalMb} MB</strong>.<br>
+                    Los Webhooks de la plataforma Make tienen un límite estricto de máximo <strong>~8.5 MB</strong> por solicitud.<br><br>
+                    <strong>Solución:</strong><br>
+                    1. Graba audios cortos en el sitio (2 a 5 minutos) en lugar de un archivo único de 25 minutos.<br>
+                    2. Para archivos pesados pregrabados (> 10MB), el flujo estándar es depositarlos en Google Drive para que Make los descargue por carpeta.
+                `;
+                statusBox.style.display = 'block';
+                return;
+            }
 
             btn.disabled = true;
             submitText.style.display = 'none';
@@ -961,11 +1003,11 @@
                     statusBox.innerHTML = `
                         🚀 <strong>¡Paquete enviado a Make con éxito!</strong><br>
                         Fecha: ${formattedDate} | Hora: ${time}<br>
-                        Audios adjuntos: ${validAudios.length} | Foto: ${photoFile ? 'Adjunta' : 'No'}
+                        Audios adjuntos: ${validAudios.length} (${totalMb} MB) | Foto: ${photoFile ? 'Adjunta' : 'No'}
                     `;
                     statusBox.style.display = 'block';
 
-                    // Opcional: resetear campos tras 4 segundos
+                    // Resetear formulario tras 4 segundos
                     setTimeout(() => {
                         window.location.reload();
                     }, 4000);
@@ -977,7 +1019,11 @@
             } catch (err) {
                 console.error("Error al enviar a Make:", err);
                 statusBox.className = 'status-box error';
-                statusBox.innerHTML = `❌ <strong>Error al enviar:</strong> ${err.message}. Verifica la conexión e intenta nuevamente.`;
+                let errMsg = err.message;
+                if (errMsg.includes("Failed to fetch")) {
+                    errMsg = `Conexión rechazada por Make (Gateway 413 o límite de red). Verifica que el paquete total no exceda 8.5 MB.`;
+                }
+                statusBox.innerHTML = `❌ <strong>Error al enviar:</strong> ${errMsg}`;
                 statusBox.style.display = 'block';
                 btn.disabled = false;
             } finally {
