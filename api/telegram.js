@@ -165,7 +165,7 @@ async function getCachedTasks() {
     });
     if (res.ok) {
       const data = await res.json();
-      return data.tasks_summary || null;
+      return data || null;
     }
   } catch (err) {
     console.error("Error leyendo cache de tareas en Supabase:", err);
@@ -624,8 +624,15 @@ export default async function handler(req, res) {
       }
 
       if (data === "cmd_weather") {
-        const weatherMsg = await generateWeatherReport(false);
-        await sendTelegramMessage(cbChatId, weatherMsg);
+        const weatherData = await generateWeatherReport(false);
+        const report = weatherData?.report || weatherData;
+        const spoken = weatherData?.spokenSummary;
+        await sendTelegramMessage(cbChatId, report);
+        if (spoken) {
+          try {
+            await sendPaolaVoiceNote(cbChatId, spoken, "🎙️ *Resumen Meteorológico Diario (Paola)*");
+          } catch (e) {}
+        }
         return res.status(200).json({ ok: true, handled: "cmd_weather" });
       }
 
@@ -877,8 +884,17 @@ export default async function handler(req, res) {
     if (lower === "clima" || lower === "/clima" || lower === "tiempo" || lower === "/tiempo" ||
         lower === "meteorologia" || lower === "/meteo" || lower === "pronostico" || lower === "/pronostico" ||
         lower === "clima caracas" || lower === "el clima" || lower === "el tiempo") {
-      const weatherMsg = await generateWeatherReport(false);
-      await sendTelegramMessage(chatId, weatherMsg);
+      const weatherData = await generateWeatherReport(false);
+      const report = weatherData?.report || weatherData;
+      const spoken = weatherData?.spokenSummary;
+      await sendTelegramMessage(chatId, report);
+      if (spoken) {
+        try {
+          await sendPaolaVoiceNote(chatId, spoken, "🎙️ *Resumen Meteorológico Diario (Paola)*");
+        } catch (e) {
+          console.error("Error enviando voz de Paola para clima:", e);
+        }
+      }
       return res.status(200).json({ ok: true, handled: "weather" });
     }
 
@@ -910,13 +926,23 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
-    // 5. COMANDO: CONSULTAR TAREAS DE HOY / AGENDA
+    // 5. COMANDO: CONSULTAR TAREAS DE HOY / AGENDA (OBSIDIAN)
     // ==========================================
     if (lower === "tareas" || lower === "/tareas" || lower === "pendientes" || lower === "/pendientes" ||
-        lower === "agenda hoy" || lower === "/agenda_hoy" || lower === "mis tareas") {
+        lower === "agenda hoy" || lower === "/agenda_hoy" || lower === "mis tareas" || lower === "agenda" || lower === "/agenda" || lower === "bitacora") {
       const cached = await getCachedTasks();
-      if (cached) {
-        await sendTelegramMessage(chatId, cached);
+      const textMsg = (cached && typeof cached === "object") ? cached.tasks_summary : (typeof cached === "string" ? cached : null);
+      const spokenMsg = (cached && typeof cached === "object") ? cached.tasks_spoken_summary : null;
+
+      if (textMsg) {
+        await sendTelegramMessage(chatId, textMsg);
+        if (spokenMsg) {
+          try {
+            await sendPaolaVoiceNote(chatId, spokenMsg, "🎙️ *Resumen de Agenda (Paola)*");
+          } catch (e) {
+            console.error("Error enviando voz de Paola para tareas:", e);
+          }
+        }
       } else {
         await sendTelegramMessage(chatId, "📋 *Consultando tareas en la Bóveda local...*\n_Si tu laptop está activa responderá en unos segundos._");
       }

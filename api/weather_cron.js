@@ -1,5 +1,4 @@
-// Vercel Serverless Function: JARVIS Cloud Weather Cron (06:00 AM Caracas)
-// Endpoint: https://store-skills.vercel.app/api/weather_cron
+import { sendPaolaVoiceNote } from "./tts.js";
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -136,16 +135,34 @@ export async function generateWeatherReport(isScheduled = true) {
     `💡 *Recomendación JARVIS:*\n${recommendation}\n\n` +
     `_Fuente: Red Meteorológica Open-Meteo & WMO_`;
 
-  return report;
+  const wCodeMain = data.daily?.weather_code?.[0] ?? 0;
+  const genWInfo = getWmoInfo(wCodeMain);
+  const spokenSummary = 
+    `Buenos días Gonzalo. Reporte meteorológico para Caracas: ` +
+    `temperatura mínima de ${tMin} y máxima de ${tMax} grados, con ${genWInfo.desc.toLowerCase()}. ` +
+    `Probabilidad máxima de lluvia del ${rainMax} por ciento. ${recommendation}`;
+
+  return { report, spokenSummary };
 }
 
 export default async function handler(req, res) {
   try {
     const isScheduled = req.query?.manual !== "true";
-    const reportText = await generateWeatherReport(isScheduled);
+    const weatherData = await generateWeatherReport(isScheduled);
+    const reportText = weatherData.report;
+    const spokenSummary = weatherData.spokenSummary;
 
-    // Enviar mensaje a Telegram
+    // 1. Enviar reporte escrito completo a Telegram
     await sendTelegramMessage(ALLOWED_CHAT_ID, reportText);
+
+    // 2. Enviar nota de voz ejecutiva con la Voz Oficial de Paola
+    try {
+      if (spokenSummary) {
+        await sendPaolaVoiceNote(ALLOWED_CHAT_ID, spokenSummary, "🎙️ *Resumen Meteorológico Diario (Paola)*");
+      }
+    } catch (voiceErr) {
+      console.error("Error enviando nota de voz de Paola en weather_cron:", voiceErr);
+    }
 
     // Despacho 24/7 en la nube: Briefing Global IA (06:00 AM Caracas)
     try {
