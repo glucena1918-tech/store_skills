@@ -173,6 +173,65 @@ async function getCachedTasks() {
   return null;
 }
 
+async function getCachedTelemetry() {
+  try {
+    const url = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/laptop_telemetry.json?t=${Date.now()}`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data || null;
+    }
+  } catch (err) {
+    console.error("Error leyendo cache de telemetria en Supabase:", err);
+  }
+  return null;
+}
+
+async function buildStatusReport() {
+  const telemetry = await getCachedTelemetry();
+  let telemetrySection = "";
+  
+  if (telemetry && telemetry.timestamp) {
+    const ageSeconds = Math.max(0, Math.round((Date.now() - (telemetry.timestamp * 1000)) / 1000));
+    if (ageSeconds < 150) {
+      telemetrySection = 
+        `\n💻 *TELEMETRÍA DE LA LAPTOP (EN VIVO):*\n` +
+        `🟢 *Estado:* En línea y sincronizada (hace ${ageSeconds}s)\n` +
+        `🧠 *RAM:* ${telemetry.ram_pct}% (${telemetry.ram_gb}GB / ${telemetry.ram_total_gb}GB)\n` +
+        `💾 *Disco:* ${telemetry.disk_pct}% (Libre: ${telemetry.disk_free}GB)\n` +
+        (telemetry.battery ? `🔋 *Batería:* ${telemetry.battery}\n` : "") +
+        `📂 *Obsidian Vault:* Conectada y operativa ✅\n`;
+    } else {
+      const mins = Math.round(ageSeconds / 60);
+      telemetrySection = 
+        `\n💻 *TELEMETRÍA DE LA LAPTOP:*\n` +
+        `⚪ *Estado:* Desconectada o suspendida (Última señal hace ${mins} min)\n`;
+    }
+  } else {
+    telemetrySection = 
+      `\n💻 *TELEMETRÍA DE LA LAPTOP:*\n` +
+      `📡 _Solicitando telemetría a la Laptop..._\n`;
+  }
+
+  const statusMsg = 
+    "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
+    "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
+    "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
+    "🎙️ *Auditor de Reuniones:* Minutas Oficiales .docx + Compromisos en 60s ✅\n" +
+    "📧 *Gestor Gmail:* Creación de Borradores 24/7 en la Nube ✅\n" +
+    "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
+    "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
+    "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅\n" +
+    telemetrySection;
+
+  return statusMsg;
+}
+
 async function setVoiceConfig(voiceAlias, enabled = null) {
   try {
     const voiceMap = {
@@ -616,14 +675,16 @@ export default async function handler(req, res) {
       }
 
       if (data === "cmd_status") {
-        const statusMsg = 
-          "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
-          "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
-          "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
-          "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
-          "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
-          "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅";
+        const statusMsg = await buildStatusReport();
         await sendTelegramMessage(cbChatId, statusMsg);
+
+        const ts = Date.now();
+        await uploadToSupabaseBuffer(`req_status_${ts}.json`, {
+          type: "status_request",
+          content: "Solicitud de estado de hardware",
+          timestamp: ts
+        });
+
         return res.status(200).json({ ok: true, handled: "cmd_status" });
       }
 
@@ -818,19 +879,24 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
-    // 1. COMANDO: STATUS / ESTADO DEL SISTEMA
+    // 1. COMANDO: STATUS / ESTADO / TELEMETRÍA DEL SISTEMA
     // ==========================================
-    if (lower === "status" || lower === "/status" || lower === "estado" || lower === "/estado") {
-      const statusMsg = 
-        "⚡ *JARVIS CLOUD GATEWAY (24/7 ACTIVO)*\n\n" +
-        "🌐 *Modo:* Nube Autónoma (Independencia total de laptop)\n" +
-        "📊 *Analista Presentaciones:* CUSPAL Plantilla Oficial + Memoria Bóveda (324 docs) ✅\n" +
-        "🎙️ *Auditor de Reuniones:* Minutas Oficiales .docx + Compromisos en 60s ✅\n" +
-        "📧 *Gestor Gmail:* Creación de Borradores 24/7 en la Nube ✅\n" +
-        "🎙️ *Transcripción Neural:* OpenAI Whisper-1 Operativo ✅\n" +
-        "☁️ *Buffer Nube:* Supabase Storage (`nexus_buffer`) Operativo ✅\n" +
-        "🔒 *Seguridad:* Autenticado para Gonzalo Lucena ✅";
+    if (
+      lower === "status" || lower === "/status" ||
+      lower === "estado" || lower === "/estado" ||
+      lower === "telemetria" || lower === "/telemetria" ||
+      lower === "telemetría" || lower === "/telemetría"
+    ) {
+      const statusMsg = await buildStatusReport();
       await sendTelegramMessage(chatId, statusMsg);
+
+      const ts = Date.now();
+      await uploadToSupabaseBuffer(`req_status_${ts}.json`, {
+        type: "status_request",
+        content: "Solicitud de estado de hardware",
+        timestamp: ts
+      });
+
       return res.status(200).json({ ok: true, handled: "status" });
     }
 
