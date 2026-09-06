@@ -32,10 +32,13 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
 
       if (res.approved) {
         setResult(res)
-        onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente.`, 'success')
+        onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente al directorio.`, 'success')
+      } else if (res.requires_human_review) {
+        setResult(res)
+        onToast(`📋 Diagnóstico completado. Revisa el análisis y pulsa "Aprobar e Incluir" abajo.`, 'info')
       } else {
         setResult(res)
-        onToast(`Repositorio rechazado. No cumple los estándares del directorio.`, 'info')
+        onToast(`Repositorio no admitido: ${res.reason || 'No cumple los estándares del directorio.'}`, 'error')
       }
     } catch (err) {
       setLoadingStep('')
@@ -60,9 +63,12 @@ export default function EvaluateForm({ onEvaluate, onToast, onApproveException }
 
       if (res.approved) {
         setResult(res)
-        onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente.`, 'success')
+        onToast(`✓ Skill "${res.skill?.name || 'Evaluada'}" agregada correctamente (bypass de estrellas).`, 'success')
+      } else if (res.requires_human_review) {
+        setResult(res)
+        onToast(`📋 Diagnóstico completado. Pulsa "Aprobar e Incluir" abajo para guardarla.`, 'info')
       } else {
-        onToast(`Repositorio rechazado. No cumple los estándares del directorio.`, 'info')
+        onToast(`Repositorio no admitido: ${res.reason || 'No cumple los estándares del directorio.'}`, 'error')
       }
     } catch (err) {
       setLoadingStep('')

@@ -17,12 +17,30 @@ const formatRating = (val) => {
   return Math.min(5, Math.max(1, Math.round(num)));
 };
 
-// Función para extraer solo el objeto JSON entre llaves { ... }
+// Función para extraer y parsear el objeto JSON de la respuesta de la IA
 const extractJson = (text) => {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) {
-    return JSON.parse(match[0]);
+  if (!text || typeof text !== 'string') {
+    throw new Error("Respuesta vacía o no textual de la IA.");
   }
+
+  // Quitar bloques de código markdown si existen
+  const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Buscar el primer '{' y el último '}'
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+
+  if (start !== -1 && end !== -1 && end > start) {
+    const jsonStr = clean.slice(start, end + 1);
+    try {
+      return JSON.parse(jsonStr);
+    } catch (err) {
+      console.warn('[Store Skills] Error parseando JSON directo, intentando sanitizar:', err.message);
+      const sanitized = jsonStr.replace(/[\u0000-\u001F]+/g, (match) => (match === '\n' || match === '\r' || match === '\t') ? match : '');
+      return JSON.parse(sanitized);
+    }
+  }
+
   throw new Error("No se encontró un bloque JSON válido en la respuesta de la IA.");
 };
 
@@ -55,7 +73,6 @@ REGLAS DE PROFUNDIDAD Y DETALLE OBLIGATORIAS:
 
 REGLA ESTRICTA PARA "agent_prompt":
 El campo "agent_prompt" debe ser una Instrucción de Sistema (System Prompt) lista para copiar, donde se le indique a un Agente de IA (como Claude, Cursor o ChatGPT) cómo actuar como un experto en la herramienta analizada.
-- EJEMPLO DE REFERENCIA: "Instrucción del Sistema: Tienes habilitada la skill Tailwind CSS. Cuando el usuario solicite estilos, diseño responsivo o componentes visuales, utiliza exclusivamente clases de utilidad de Tailwind CSS directamente en el markup. Evita escribir CSS personalizado salvo que Tailwind no cubra el caso específico."
 - FORMATO OBLIGATORIO: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
 - QUEDA ESTRICTAMENTE PROHIBIDO que el "agent_prompt" mencione frases como: "Eres un curador de repositorios", "Tu tarea es analizar GitHub" o "Evalúa la popularidad". Debe ser 100% enfocado en PROGRAMAR e IMPLEMENTAR la herramienta.
 
@@ -75,7 +92,7 @@ README: ${readmeText.slice(0, 8000)}`;
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -102,6 +119,15 @@ README: ${readmeText.slice(0, 8000)}`;
   return parsedData;
 };
 
+// Modelos gratuitos de alto rendimiento probados en OpenRouter con soporte JSON
+const OPENROUTER_FREE_MODELS = [
+  "minimax/minimax-m2.7:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "cohere/north-mini-code:free",
+  "openrouter/auto"
+];
+
 export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
@@ -111,67 +137,79 @@ export const evaluateWithOpenRouter = async (repoMetadata, readmeText) => {
 
   const systemPrompt = `Eres un curador de Skills de IA para desarrolladores hispanohablantes.
 Analiza el repositorio y responde ÚNICAMENTE con un objeto JSON válido sin bloques de código Markdown ni texto extra.
-JSON con los campos: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.
+JSON con los campos obligatorios: name, description, use_case, example_usage, category, install_command, license, maintenance_status, risk_level, agent_prompt, agent_reasoning_trace, pros, cons, agent_recommendation, rating, approved.
 
 REGLA DE IDIOMA Y ESTRUCTURA OBLIGATORIA:
 1. Redacta TODO el contenido del JSON estrictamente en ESPAÑOL.
 2. El campo "agent_reasoning_trace" DEBE SER SIEMPRE UN ARRAY DE EXACTAMENTE 4 ELEMENTOS EN ESPAÑOL siguiendo este formato exacto:
-
-"agent_reasoning_trace": [
+[
   "Paso 1: Verificación de repositorio: [número de estrellas] estrellas en GitHub.",
   "Paso 2: Análisis de README: [resumen breve en español de la documentación].",
   "Paso 3: Clasificación automática: Categoría [Categoría asignada].",
   "Paso 4: Dictamen: [Aprobado sin observaciones / Aprobado por Excepción Humana (Human-in-the-Loop) - Bajo el umbral / Bloqueado por Riesgo Alto]"
 ]
+3. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (sin decimales).
+4. "pros": Array con MÍNIMO 2 O 3 PUNTOS FUERTES en español (ej: ["Excelente documentación y organización modular", "Código de fuente abierto bajo licencia MIT"]).
+5. "cons": Array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
+6. "description": Explicación técnica profunda de mínimo 100 palabras (2 párrafos) detallando el propósito y arquitectura.
+7. "use_case": Casos concretos de uso.
+8. "agent_prompt": Formato obligatorio: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
 
-3. El campo 'rating' DEBE SER OBLIGATORIAMENTE UN NÚMERO ENTERO DEL 1 AL 5 (ejemplo: 1, 2, 3, 4 o 5). No uses decimales ni escalas de 10.
-
-REGLA OBLIGATORIA PARA PROS Y CONTRAS:
-- "pros": Debe ser un array con MÍNIMO 2 O 3 PUNTOS FUERTES en español (ej: ["Excelente documentación y organización modular", "Código de fuente abierto bajo licencia MIT"]).
-- "cons": Debe ser un array con MÍNIMO 2 PUNTOS A CONSIDERAR en español (ej: ["Popularidad por debajo del umbral estándar de 10.001 estrellas", "Comunidad de contribuidores reducida"]).
-
-QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons".
-
-REGLA ESTRICTA PARA "agent_prompt":
-El campo "agent_prompt" debe ser una Instrucción de Sistema (System Prompt) lista para copiar, donde se le indique a un Agente de IA (como Claude, Cursor o ChatGPT) cómo actuar como un experto en la herramienta analizada.
-- EJEMPLO DE REFERENCIA: "Instrucción del Sistema: Tienes habilitada la skill Tailwind CSS. Cuando el usuario solicite estilos, diseño responsivo o componentes visuales, utiliza exclusivamente clases de utilidad de Tailwind CSS directamente en el markup. Evita escribir CSS personalizado salvo que Tailwind no cubra el caso específico."
-- FORMATO OBLIGATORIO: "Actúa como un experto en [Nombre de la Herramienta] especializado en [Lenguaje/Tecnología]. Cuando el usuario te solicite [Caso de uso principal], utiliza [buenas prácticas, patrones y librerías de esta herramienta] para [beneficio técnico]."
-- QUEDA ESTRICTAMENTE PROHIBIDO que el "agent_prompt" mencione frases como: "Eres un curador de repositorios", "Tu tarea es analizar GitHub" o "Evalúa la popularidad". Debe ser 100% enfocado en PROGRAMAR e IMPLEMENTAR la herramienta.
-
-QUEDA PROHIBIDO DEVOLVER "agent_reasoning_trace" COMO UN TEXTO PLANO ÚNICO O EN INGLÉS.`;
+QUEDA PROHIBIDO DEVOLVER ARRAYS VACÍOS [] PARA "pros" O "cons" O TEXTO FUERA DEL JSON.`;
 
   const userPrompt = `Analiza este repositorio:
 Nombre: ${repoMetadata.name}
 Estrellas: ${repoMetadata.stars}
 README: ${readmeText.slice(0, 8000)}`;
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://store-skills.vercel.app",
-      "X-Title": "SkillAI Store"
-    },
-    body: JSON.stringify({
-      model: "openrouter/free",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.2
-    })
-  });
+  let lastError = null;
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Error OpenRouter API (${response.status}): ${errorData.error?.message || response.statusText}`);
+  for (const model of OPENROUTER_FREE_MODELS) {
+    try {
+      console.log(`[Store Skills] Evaluando con OpenRouter (modelo: ${model})...`);
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://store-skills.vercel.app",
+          "X-Title": "SkillAI Store"
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const statusMsg = errorData.error?.message || response.statusText;
+        console.warn(`[Store Skills] Modelo ${model} respondió HTTP ${response.status}: ${statusMsg}. Intentando siguiente modelo...`);
+        lastError = new Error(`HTTP ${response.status}: ${statusMsg}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const rawText = data.choices?.[0]?.message?.content || "";
+      if (!rawText.trim()) {
+        console.warn(`[Store Skills] Modelo ${model} devolvió respuesta vacía. Intentando siguiente...`);
+        continue;
+      }
+
+      const parsedData = extractJson(rawText);
+      console.log(`[Store Skills] ✓ Evaluación exitosa con modelo ${model}`);
+      return parsedData;
+    } catch (err) {
+      console.warn(`[Store Skills] Falló parseo o llamada con ${model}:`, err.message);
+      lastError = err;
+    }
   }
 
-  const data = await response.json();
-  const rawText = data.choices[0]?.message?.content || "";
-  const parsedData = extractJson(rawText);
-  return parsedData;
+  throw new Error(`Los motores de IA de OpenRouter no pudieron procesar la solicitud. Último error: ${lastError?.message || 'Sin respuesta'}`);
 };
 
 export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
@@ -212,15 +250,42 @@ export const evaluateSkill = async (repoMetadata, readmeText, options = {}) => {
     };
   }
 
-  // 1. Evaluar llamando a OpenAI API (gpt-4o)
-  const evaluation = await evaluateWithOpenAI(repoMetadata, readmeText);
+  // 1. Evaluar llamando a la IA disponible (OpenAI si existe key, o OpenRouter con cascada de modelos)
+  let evaluation = null;
+  const openAiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+
+  if (openAiKey) {
+    try {
+      console.log('[Store Skills] Intentando evaluación con OpenAI...');
+      evaluation = await evaluateWithOpenAI(repoMetadata, readmeText);
+    } catch (err) {
+      console.warn('[Store Skills] Falló OpenAI, recurriendo a OpenRouter:', err.message);
+    }
+  }
+
+  if (!evaluation && openRouterKey) {
+    try {
+      evaluation = await evaluateWithOpenRouter(repoMetadata, readmeText);
+    } catch (err) {
+      console.error('[Store Skills] Error en OpenRouter:', err.message);
+      throw err;
+    }
+  }
+
+  if (!evaluation) {
+    if (!openAiKey && !openRouterKey) {
+      throw new Error("No hay proveedores de IA configurados. Configura VITE_OPENROUTER_API_KEY o VITE_OPENAI_API_KEY.");
+    }
+    throw new Error("No se pudo completar la evaluación con ningún motor de IA disponible.");
+  }
 
   // 2. Validar rating asignado por la IA (redondeado a entero entre 1 y 5)
   const rating = formatRating(evaluation.rating);
   if (rating < 3) {
     return {
       approved: false,
-      reason: `Rechazado por la IA: Rating ${rating}/5 (mínimo requerido: 3/5). ${evaluation.reason || ''}`,
+      reason: `Rechazado por la IA: Rating ${rating}/5 (mínimo requerido: 3/5). ${evaluation.agent_recommendation || evaluation.reason || ''}`,
     };
   }
 
