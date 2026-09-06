@@ -145,9 +145,46 @@ export async function generateWeatherReport(isScheduled = true) {
   return { report, spokenSummary };
 }
 
+// Configurar tiempo máximo de ejecución para evitar timeouts y reintentos en Vercel
+export const maxDuration = 60;
+
 export default async function handler(req, res) {
   try {
     const isScheduled = req.query?.manual !== "true";
+    // Fecha en hora oficial de Caracas (YYYY-MM-DD)
+    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
+
+    // =========================================================================
+    // 0. VERIFICACIÓN DE IDEMPOTENCIA (ANTI-DUPLICACIÓN)
+    // =========================================================================
+    // Si es una ejecución programada y el reporte ya fue entregado hoy, omitir de inmediato.
+    if (isScheduled) {
+      try {
+        const checkUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/last_weather_report.json?t=${Date.now()}`;
+        const checkRes = await fetch(checkUrl, {
+          headers: {
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        });
+        if (checkRes.ok) {
+          const cacheData = await checkRes.json();
+          if (cacheData?.date === todayStr && cacheData?.delivered === true) {
+            console.log(`[WEATHER CRON] El reporte meteorológico del ${todayStr} ya fue emitido hoy (${cacheData.source || "nube"}). Omitiendo reenvío para evitar duplicados.`);
+            return res.status(200).json({
+              ok: true,
+              skipped: true,
+              reason: "already_delivered_today",
+              date: todayStr,
+              delivered_at: cacheData.delivered_at
+            });
+          }
+        }
+      } catch (checkErr) {
+        console.warn("[WEATHER CRON] Advertencia verificando caché de entrega previa:", checkErr);
+      }
+    }
+
     const weatherData = await generateWeatherReport(isScheduled);
     const reportText = weatherData.report;
     const spokenSummary = weatherData.spokenSummary;
@@ -162,6 +199,30 @@ export default async function handler(req, res) {
       }
     } catch (voiceErr) {
       console.error("Error enviando nota de voz de Paola en weather_cron:", voiceErr);
+    }
+
+    // REGISTRO ATÓMICO INMEDIATO: Marcar como entregado en Supabase Storage
+    // para blindar contra cualquier reintento de red o ejecución concurrente.
+    try {
+      const cacheUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/last_weather_report.json`;
+      await fetch(cacheUrl, {
+        method: "PUT",
+        headers: {
+          "apikey": SUPABASE_SERVICE_ROLE_KEY,
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          "x-upsert": "true"
+        },
+        body: JSON.stringify({
+          date: todayStr,
+          delivered: true,
+          delivered_at: new Date().toISOString(),
+          source: "vercel_cloud_cron"
+        })
+      });
+      console.log(`[WEATHER CRON] Entrega del reporte meteorológico (${todayStr}) registrada atómicamente en Supabase.`);
+    } catch (cacheSaveErr) {
+      console.error("[WEATHER CRON] Error guardando registro atómico en Supabase:", cacheSaveErr);
     }
 
     // Despacho 24/7 en la nube: Briefing Global IA (06:00 AM Caracas)
@@ -261,24 +322,6 @@ export default async function handler(req, res) {
     } catch (briefingErr) {
       console.error("Error en despacho de Briefing IA dentro de weather_cron:", briefingErr);
     }
-
-    // Registrar estado en Supabase Storage para evitar duplicados
-    const todayStr = new Date().toISOString().split("T")[0];
-    const cacheUrl = `${SUPABASE_URL}/storage/v1/object/nexus_buffer/cache/last_weather_report.json`;
-    await fetch(cacheUrl, {
-      method: "PUT",
-      headers: {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        date: todayStr,
-        delivered: true,
-        delivered_at: new Date().toISOString(),
-        source: "vercel_cloud_cron"
-      })
-    });
 
     return res.status(200).json({
       ok: true,
