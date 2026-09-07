@@ -52,11 +52,20 @@ export function parseMeetingIntent(text) {
   // Limpiar prefijos de llamada tipo "arbis", "nexus", "jarvis", "oye", etc.
   const cleaned = lower.replace(/^(?:arbis|nexus|jarvis|oye|copiloto|bot|asistente)[\s,:]+/i, "").trim();
 
-  // Comandos explícitos o frases de inicio directo de reunión
+  // Comandos explícitos o frases de inicio directo de reunión o agenda
   if (
     cleaned.startsWith("minuta") || cleaned.startsWith("/minuta") ||
     cleaned.startsWith("reunion") || cleaned.startsWith("reunión") || cleaned.startsWith("/reunion") || cleaned.startsWith("/reunión") ||
     cleaned.startsWith("acta") || cleaned.startsWith("/acta") ||
+    cleaned.startsWith("agenda de reunion") || cleaned.startsWith("agenda de reunión") ||
+    cleaned.startsWith("agenda para la reunion") || cleaned.startsWith("agenda para la reunión") ||
+    cleaned.startsWith("agenda reunion") || cleaned.startsWith("agenda reunión") ||
+    cleaned.startsWith("agenda de trabajo") ||
+    cleaned.startsWith("convocatoria") || cleaned.startsWith("/convocatoria") ||
+    cleaned.startsWith("temario de reunion") || cleaned.startsWith("temario de reunión") ||
+    cleaned.startsWith("temario") ||
+    cleaned.startsWith("puntos de reunion") || cleaned.startsWith("puntos de reunión") ||
+    cleaned.startsWith("puntos a tratar") ||
     cleaned.startsWith("prepara un acta") || cleaned.startsWith("prepara una minuta") ||
     cleaned.startsWith("genera un acta") || cleaned.startsWith("generar acta") || cleaned.startsWith("crear acta") ||
     cleaned.startsWith("redactar acta") || cleaned.startsWith("prepara el acta") ||
@@ -74,6 +83,7 @@ export function parseMeetingIntent(text) {
     lower.includes("minuta") || lower.includes("acta") || 
     lower.includes("mesa de trabajo") || lower.includes("comité") ||
     lower.includes("junta directiva") || lower.includes("sesión de trabajo") ||
+    lower.includes("convocatoria") ||
     lower.includes("quienes estuvieron presentes") || lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión") ||
     lower.includes("hice una prueba referente a hacer el resumen") || lower.includes("resumen de la reunión");
 
@@ -94,10 +104,17 @@ export function parseMeetingIntent(text) {
 
   const hasStructureWord =
     lower.includes("síntesis de lo hablado") || lower.includes("sintesis de lo hablado") ||
-    lower.includes("puntos tratados") || lower.includes("quienes asistieron") || lower.includes("quienes estuvieron presentes");
+    lower.includes("puntos tratados") || lower.includes("puntos a tratar") || lower.includes("temas a tratar") ||
+    lower.includes("temario") || lower.includes("orden del día") || lower.includes("orden del dia") ||
+    lower.includes("convocados") || lower.includes("participantes") ||
+    lower.includes("quienes asistieron") || lower.includes("quienes estuvieron presentes");
 
   return (hasMeetingWord && (hasAgreementWord || hasStructureWord)) || 
-         (lower.includes("acta de reunión") || lower.includes("acta de reunion") || lower.includes("minuta de reunión") || lower.includes("minuta de reunion"));
+         lower.includes("acta de reunión") || lower.includes("acta de reunion") || 
+         lower.includes("minuta de reunión") || lower.includes("minuta de reunion") ||
+         lower.includes("agenda de reunión") || lower.includes("agenda de reunion") ||
+         lower.includes("agenda de la reunión") || lower.includes("agenda de la reunion") ||
+         lower.includes("agenda de trabajo");
 }
 
 /**
@@ -109,12 +126,13 @@ export async function analyzeMeetingDebrief(rawText) {
 Tu misión es transformar el relato, nota de voz o reporte de una reunión de trabajo en una estructura de Minuta Oficial de Máximo Rigor Institucional y Administrativo.
 
 INSTRUCCIONES CLAVE:
-1. Extrae el título real de la reunión, fecha, hora, lugar y todos los participantes con sus cargos mencionados.
-2. Identifica y sintetiza con precisión técnica y profesional todos los puntos tratados.
-3. Extrae CADA compromiso individualizado: qué se acordó, quién es el responsable exacto, cuál es la fecha límite exacta y su prioridad (Alta/Media/Normal).
-4. Para CADA compromiso con fecha límite, genera un objeto en 'calendar_events' con 'date' en formato YYYY-MM-DD (asume el año ${currentYear} para fechas de este mes), 'summary' descriptivo y 'start_time' 10:00.
-5. Redacta en 'email_draft' un correo oficial, formal y protocolar de CUSPAL dirigido a los participantes (NO un volcado de la transcripción, sino una comunicación ejecutiva formal convocando al cumplimiento de los acuerdos y anunciando el acta adjunta).
-6. Genera un guion de 25 a 35 segundos para 'paola_script' donde Paola le resuma con naturalidad al Comandante Gonzalo los compromisos registrados y plazos.
+1. Extrae el título real de la reunión, fecha, hora, lugar y todos los participantes o dependencias convocadas con sus cargos.
+2. Identifica y sintetiza con precisión técnica y profesional todos los puntos tratados o temas de la agenda a tratar.
+3. Si la reunión ya ocurrió y tiene acuerdos: Extrae CADA compromiso individualizado: qué se acordó, quién es el responsable exacto, cuál es la fecha límite exacta y su prioridad (Alta/Media/Normal).
+4. Si es una AGENDA PREVIA / CONVOCATORIA (temas por tratar): Genera en 'calendar_events' el evento principal para la fecha y hora de la reunión en Google Calendar, y en 'agreements' deja los preparativos o un arreglo vacío si aún no hay acuerdos suscritos.
+5. Para CADA compromiso o cita con fecha límite, genera un objeto en 'calendar_events' con 'date' en formato YYYY-MM-DD (asume el año ${currentYear} para fechas de este mes), 'summary' descriptivo y 'start_time' 10:00 (o la hora especificada).
+6. Redacta en 'email_draft' un correo oficial, formal y protocolar de CUSPAL dirigido a los convocados/participantes (convocando a la reunión con el temario o remitiendo los acuerdos formales).
+7. Genera un guion de 25 a 35 segundos para 'paola_script' donde Paola le resuma con naturalidad al Comandante Gonzalo los puntos de agenda registrados y eventos agendados.
 
 Debes devolver EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura exacta:
 {
@@ -359,47 +377,86 @@ export async function buildOfficialCuspalMinutaDocx(meetingData) {
   ];
 
   const agreements = meetingData.agreements || [];
-  agreements.forEach((a, idx) => {
-    const bg = idx % 2 === 0 ? "F9FAFB" : "FFFFFF";
-    const prioColor = a.priority === "Alta" ? "C00000" : (a.priority === "Media" ? "D06B00" : "1F497D");
-
+  if (agreements.length === 0) {
     tableRows.push(
       new TableRow({
         children: [
           new TableCell({
             width: { size: 600, type: WidthType.DXA },
-            shading: { fill: bg, type: ShadingType.CLEAR },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
             borders: cellBorders,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${a.id || idx + 1}`, bold: true, size: 18 })] })]
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "-", size: 18 })] })]
           }),
           new TableCell({
             width: { size: 4800, type: WidthType.DXA },
-            shading: { fill: bg, type: ShadingType.CLEAR },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
             borders: cellBorders,
-            children: [new Paragraph({ children: [new TextRun({ text: a.agreement || "", size: 18 })] })]
+            children: [new Paragraph({ children: [new TextRun({ text: "Temario de agenda en desarrollo / Acuerdos por suscribir en la sesión convocada", italic: true, size: 18 })] })]
           }),
           new TableCell({
             width: { size: 2200, type: WidthType.DXA },
-            shading: { fill: bg, type: ShadingType.CLEAR },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
             borders: cellBorders,
-            children: [new Paragraph({ children: [new TextRun({ text: a.responsible || "No asignado", bold: true, size: 18 })] })]
+            children: [new Paragraph({ children: [new TextRun({ text: "Mesa convocada", size: 18 })] })]
           }),
           new TableCell({
             width: { size: 1800, type: WidthType.DXA },
-            shading: { fill: bg, type: ShadingType.CLEAR },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
             borders: cellBorders,
-            children: [new Paragraph({ children: [new TextRun({ text: a.deadline || "Pendiente", size: 17 })] })]
+            children: [new Paragraph({ children: [new TextRun({ text: "Durante la jornada", size: 17 })] })]
           }),
           new TableCell({
             width: { size: 1100, type: WidthType.DXA },
-            shading: { fill: bg, type: ShadingType.CLEAR },
+            shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
             borders: cellBorders,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: a.priority || "Normal", bold: true, color: prioColor, size: 17 })] })]
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Normal", size: 17 })] })]
           })
         ]
       })
     );
-  });
+  } else {
+    agreements.forEach((a, idx) => {
+      const bg = idx % 2 === 0 ? "F9FAFB" : "FFFFFF";
+      const prioColor = a.priority === "Alta" ? "C00000" : (a.priority === "Media" ? "D06B00" : "1F497D");
+
+      tableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 600, type: WidthType.DXA },
+              shading: { fill: bg, type: ShadingType.CLEAR },
+              borders: cellBorders,
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${a.id || idx + 1}`, bold: true, size: 18 })] })]
+            }),
+            new TableCell({
+              width: { size: 4800, type: WidthType.DXA },
+              shading: { fill: bg, type: ShadingType.CLEAR },
+              borders: cellBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: a.agreement || "", size: 18 })] })]
+            }),
+            new TableCell({
+              width: { size: 2200, type: WidthType.DXA },
+              shading: { fill: bg, type: ShadingType.CLEAR },
+              borders: cellBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: a.responsible || "No asignado", bold: true, size: 18 })] })]
+            }),
+            new TableCell({
+              width: { size: 1800, type: WidthType.DXA },
+              shading: { fill: bg, type: ShadingType.CLEAR },
+              borders: cellBorders,
+              children: [new Paragraph({ children: [new TextRun({ text: a.deadline || "Pendiente", size: 17 })] })]
+            }),
+            new TableCell({
+              width: { size: 1100, type: WidthType.DXA },
+              shading: { fill: bg, type: ShadingType.CLEAR },
+              borders: cellBorders,
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: a.priority || "Normal", bold: true, color: prioColor, size: 17 })] })]
+            })
+          ]
+        })
+      );
+    });
+  }
 
   const participants = meetingData.participants || ["Gonzalo Lucena"];
   const summaryPoints = meetingData.summary || [];
