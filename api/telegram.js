@@ -533,7 +533,6 @@ export function parseDraftIntent(text) {
 
   // Si es intención de reunión o presentación, no interferir
   if (
-    parseMeetingIntent(text) ||
     lower.includes("acta") || lower.includes("minuta") ||
     lower.includes("quienes asistieron") || lower.includes("asistentes a la reunión") ||
     lower.includes("síntesis de lo hablado") || lower.includes("sintesis de lo hablado") ||
@@ -889,7 +888,6 @@ export default async function handler(req, res) {
     // Detecta peticiones directas, por texto o por notas de voz (speech-to-action)
     // ==========================================
     const isExplicitNoteOrTask = 
-      parseMeetingIntent(text) ||
       lower.startsWith("tarea:") || lower.startsWith("/tarea") ||
       lower.startsWith("nota:") || lower.startsWith("/nota") ||
       lower.startsWith("agenda:") || lower.startsWith("/agenda") ||
