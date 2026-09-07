@@ -746,8 +746,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, ignored: "unauthorized" });
     }
 
-    let text = (msg.text || "").trim();
+    let text = (msg.text || msg.caption || "").trim();
     let isVoice = false;
+    let attachedPhotoBuffer = null;
+    let attachedPhotoUrl = null;
+
+    // Detectar foto enviada directamente en este mensaje
+    if (msg.photo && msg.photo.length > 0) {
+      try {
+        const photoArray = msg.photo;
+        const bestPhoto = photoArray[photoArray.length - 1];
+        attachedPhotoBuffer = await downloadTelegramFile(bestPhoto.file_id);
+        const ts = Date.now();
+        attachedPhotoUrl = await uploadMediaToSupabase(`foto_${ts}.jpg`, attachedPhotoBuffer, "image/jpeg");
+      } catch (errDirectPh) {
+        console.error("Error descargando foto directa:", errDirectPh);
+      }
+    }
 
     // ==========================================
     // A. ENTRADA POR NOTA DE VOZ (SPEECH-TO-ACTION)
@@ -755,60 +770,18 @@ export default async function handler(req, res) {
     if (msg.voice) {
       isVoice = true;
 
-      // === FLUJO MAKE DIRECTO (FOTO + AUDIO) ===
+      // Si es respuesta a un mensaje previo que contenía foto
       if (msg.reply_to_message && msg.reply_to_message.photo) {
         try {
-          await sendTelegramMessage(chatId, "🚀 _Foto y Audio detectados. Subiendo a Supabase y disparando automatización Make..._");
-          
           const photoArray = msg.reply_to_message.photo;
           const bestPhoto = photoArray[photoArray.length - 1];
-          
-          const photoBuffer = await downloadTelegramFile(bestPhoto.file_id);
-          const audioBuffer = await downloadTelegramFile(msg.voice.file_id);
-          
+          attachedPhotoBuffer = await downloadTelegramFile(bestPhoto.file_id);
           const ts = Date.now();
-          const photoUrl = await uploadMediaToSupabase(`foto_${ts}.jpg`, photoBuffer, "image/jpeg");
-          const audioUrl = await uploadMediaToSupabase(`audio_${ts}.oga`, audioBuffer, "audio/ogg");
-          
-          if (!photoUrl || !audioUrl) {
-             await sendTelegramMessage(chatId, "❌ _Error: No se pudieron generar las URLs públicas en Supabase._");
-             return res.status(200).json({ ok: true, handled: "make_upload_error" });
-          }
-
-          const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL || "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
-          if (!MAKE_WEBHOOK_URL) {
-             await sendTelegramMessage(chatId, `⚠️ *Falta Webhook:*\nPor favor, ve a Vercel y añade la variable de entorno \`MAKE_WEBHOOK_URL\` con la URL de tu primer nodo rosado de Make.\n\n_Tus archivos están listos en:_ \n📸 [Descargar Foto](${photoUrl})\n🎙️ [Descargar Audio](${audioUrl})`);
-             return res.status(200).json({ ok: true, handled: "make_missing_env" });
-          }
-          
-          const makePayload = {
-            foto_url: photoUrl,
-            audio_url: audioUrl,
-            titulo: "Reunión enviada desde Telegram (JARVIS)",
-            origen: "Telegram"
-          };
-
-          const makeRes = await fetch(MAKE_WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(makePayload)
-          });
-
-          if (makeRes.ok) {
-             await sendTelegramMessage(chatId, "✅ *¡Enviado a Make con éxito!*\n\nTu automatización ya tiene la foto y el audio trabajando en la nube. ¡Bien hecho!");
-             await sendPaolaVoiceNote(chatId, "Comandante, la foto y el audio han sido enviados exitosamente a su automatización de Make. Puede continuar con sus labores.", "🎙️ *Voz de Confirmación (Paola)*");
-          } else {
-             await sendTelegramMessage(chatId, `❌ *Error disparando Make:*\nCódigo HTTP ${makeRes.status}`);
-          }
-          
-          return res.status(200).json({ ok: true, handled: "make_success" });
-        } catch (makeErr) {
-          console.error("Error en flujo Make:", makeErr);
-          await sendTelegramMessage(chatId, `❌ Error crítico en flujo Make: ${makeErr.message}`);
-          return res.status(200).json({ ok: false, error: makeErr.message });
+          attachedPhotoUrl = await uploadMediaToSupabase(`foto_${ts}.jpg`, attachedPhotoBuffer, "image/jpeg");
+        } catch (errReplyPhoto) {
+          console.error("Error descargando foto de respuesta:", errReplyPhoto);
         }
       }
-      // === FIN FLUJO MAKE DIRECTO ===
 
       try {
         await sendTelegramMessage(chatId, "🎙️ _Escuchando nota de voz con OpenAI Whisper..._");
@@ -829,25 +802,55 @@ export default async function handler(req, res) {
       }
     }
 
-    if (!text) {
+    if (!text && !attachedPhotoBuffer) {
       return res.status(200).json({ ok: true, ignored: "empty_text" });
+    }
+
+    // Si envió solo una foto sin texto, asignarle un texto base de auditoría visual de reunión
+    if (!text && attachedPhotoBuffer) {
+      text = "Agenda de reunión: Registro fotográfico de mesa de trabajo y temas tratados";
     }
 
     const lower = text.toLowerCase();
 
     // ==========================================
     // 0. AUDITOR DE REUNIONES Y MINUTA EJECUTIVA (MÁXIMA PRIORIDAD)
-    // Speech-to-Action: Detecta audios o reportes de reuniones y genera Minuta Oficial .docx
+    // Speech-to-Action: Detecta audios, agendas o reportes de reuniones y genera Minuta Oficial .docx
     // ==========================================
-    if (parseMeetingIntent(text)) {
+    const isMeetingIntent = parseMeetingIntent(text) || (
+      attachedPhotoBuffer && !lower.startsWith("memo:") && !lower.startsWith("oficio:") && !lower.startsWith("/memo") && !lower.startsWith("/oficio")
+    );
+
+    if (isMeetingIntent) {
       await processMeetingDebriefFull({
         text,
         chatId,
         msgId,
         isVoice,
+        photoBuffer: attachedPhotoBuffer,
+        photoUrl: attachedPhotoUrl,
         sendTelegramMessage,
         sendTelegramDocument
       });
+
+      // Si Make tiene webhook configurado y hay foto, notificarle en paralelo el tipo exacto
+      const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL || "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
+      if (MAKE_WEBHOOK_URL && attachedPhotoUrl) {
+        try {
+          fetch(MAKE_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tipo: "agenda_reunion",
+              titulo: "Agenda de Reunión CUSPAL",
+              texto: text,
+              foto_url: attachedPhotoUrl,
+              origen: "Telegram"
+            })
+          }).catch(e => console.error("Error disparando Make en paralelo:", e));
+        } catch (_) {}
+      }
+
       return res.status(200).json({ ok: true, handled: "meeting_minuta" });
     }
 
@@ -1152,9 +1155,17 @@ export default async function handler(req, res) {
       type = "note";
       cleanContent = getBody(text, "nota");
       confirmMsg = `💡 *Nota guardada:*\n\`${cleanContent}\`\n\n📂 _Destino: Inbox.md & Bitácora_`;
-    } else if (lower.startsWith("agenda:") || lower.startsWith("/agenda") || lower.startsWith("evento:") || lower.startsWith("/evento") || lower.startsWith("reunion:")) {
+    } else if (lower.startsWith("memo:") || lower.startsWith("/memo") || lower.startsWith("memo ")) {
+      type = "memo";
+      cleanContent = getBody(text, "memo");
+      confirmMsg = `📄 *Memorándum Interno CUSPAL registrado:*\n\`${cleanContent}\`\n\n📂 _Destino: Despacho / Correspondencia CUSPAL_`;
+    } else if (lower.startsWith("oficio:") || lower.startsWith("/oficio") || lower.startsWith("oficio ")) {
+      type = "oficio";
+      cleanContent = getBody(text, "oficio");
+      confirmMsg = `🏛️ *Oficio Externo CUSPAL registrado:*\n\`${cleanContent}\`\n\n📂 _Destino: Despacho / Correspondencia CUSPAL_`;
+    } else if (lower.startsWith("agenda:") || lower.startsWith("/agenda") || lower.startsWith("evento:") || lower.startsWith("/evento")) {
       type = "event";
-      cleanContent = getBody(text, "(agenda|evento|reunion)");
+      cleanContent = getBody(text, "(agenda|evento)");
       confirmMsg = `📅 *Evento agendado:*\n\`${cleanContent}\`\n\n📂 _Destino: Google Calendar & Bitácora_`;
     } else if (lower.startsWith("borrador:") || lower.startsWith("/borrador") || lower.startsWith("draft:")) {
       type = "draft";

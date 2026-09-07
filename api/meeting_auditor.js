@@ -7,6 +7,7 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  ImageRun,
   Table,
   TableRow,
   TableCell,
@@ -48,6 +49,17 @@ function extractJson(text) {
 export function parseMeetingIntent(text) {
   if (!text) return false;
   const lower = text.toLowerCase().trim();
+
+  // SALVAGUARDA ESTRICTA: Si es una orden de correspondencia administrativa (Memo u Oficio), NO es reunión
+  if (
+    lower.startsWith("memo:") || lower.startsWith("/memo") || lower.startsWith("memo ") ||
+    lower.startsWith("oficio:") || lower.startsWith("/oficio") || lower.startsWith("oficio ") ||
+    lower.startsWith("redactar memo") || lower.startsWith("redactar un memo") ||
+    lower.startsWith("redactar oficio") || lower.startsWith("redactar un oficio") ||
+    lower.startsWith("memorando:") || lower.startsWith("memorandum:") || lower.startsWith("memorándum:")
+  ) {
+    return false;
+  }
 
   // Limpiar prefijos de llamada tipo "arbis", "nexus", "jarvis", "oye", etc.
   const cleaned = lower.replace(/^(?:arbis|nexus|jarvis|oye|copiloto|bot|asistente)[\s,:]+/i, "").trim();
@@ -323,7 +335,7 @@ Debes devolver EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura
 /**
  * Genera el documento Word (.docx) oficial de Minuta CUSPAL
  */
-export async function buildOfficialCuspalMinutaDocx(meetingData) {
+export async function buildOfficialCuspalMinutaDocx(meetingData, photoBuffer = null) {
   const headerBorders = {
     top: { style: BorderStyle.SINGLE, size: 1, color: "1F497D" },
     bottom: { style: BorderStyle.SINGLE, size: 2, color: "1F497D" },
@@ -555,6 +567,24 @@ export async function buildOfficialCuspalMinutaDocx(meetingData) {
             width: { size: 10500, type: WidthType.DXA }
           }),
 
+          // Sección 4: Evidencia Fotográfica (Si se adjuntó foto)
+          ...(photoBuffer ? [
+            new Paragraph({
+              spacing: { before: 300, after: 120 },
+              children: [new TextRun({ text: "4. EVIDENCIA FOTOGRÁFICA / REGISTRO VISUAL", bold: true, size: 20, color: "1F497D" })]
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 150 },
+              children: [
+                new ImageRun({
+                  data: photoBuffer,
+                  transformation: { width: 480, height: 320 }
+                })
+              ]
+            })
+          ] : []),
+
           // Constancia y Firma
           new Paragraph({
             spacing: { before: 600, after: 60 },
@@ -617,6 +647,8 @@ export async function processMeetingDebriefFull({
   chatId,
   msgId,
   isVoice,
+  photoBuffer = null,
+  photoUrl = null,
   sendTelegramMessage,
   sendTelegramDocument
 }) {
@@ -624,14 +656,15 @@ export async function processMeetingDebriefFull({
     // 1. Notificación inmediata
     await sendTelegramMessage(chatId, 
       `🎙️ *Auditando Reunión y Generando Minuta Ejecutiva en 60 Segundos...*\n\n` +
-      `🧠 _Procesando el audio con IA, desglosando acuerdos, preparando documento Word oficial y borrador de despacho..._`
+      `🧠 _Procesando el insumo con IA, desglosando acuerdos, preparando documento Word oficial y borrador de despacho..._` +
+      (photoBuffer ? `\n📸 _Fotografía detectada: Se incluirá en la Minuta como evidencia visual._` : "")
     );
 
     // 2. Análisis con IA
     const meetingData = await analyzeMeetingDebrief(text);
 
-    // 3. Generación del Documento Word Oficial
-    const docxBuffer = await buildOfficialCuspalMinutaDocx(meetingData);
+    // 3. Generación del Documento Word Oficial (con foto si existe)
+    const docxBuffer = await buildOfficialCuspalMinutaDocx(meetingData, photoBuffer);
     const safeTitle = (meetingData.title || "Minuta_Reunion")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-zA-Z0-9_\-]/g, "_")
@@ -687,6 +720,10 @@ export async function processMeetingDebriefFull({
     
     if (calendarResults.length > 0) {
       reportMsg += `📅 *Google Calendar:* ${calendarResults.length} evento(s) agendado(s) exitosamente.\n`;
+    }
+
+    if (photoBuffer) {
+      reportMsg += `📸 *Evidencia Fotográfica:* Adjunta y embebida en la sección 4 del documento Word.\n`;
     }
 
     reportMsg += `\n📂 _Copia de resguardo en la Bóveda sincronizada._`;
