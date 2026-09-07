@@ -581,7 +581,7 @@
             <div>FOTO: <span id="telemetry-photo">NO</span></div>
             <div>PISTAS: <span id="telemetry-audios">0</span></div>
             <div>ASISTENTES: <span id="telemetry-attendees">0</span></div>
-            <div>PESO: <span id="telemetry-size">0.0 MB</span> <small>(Máx 8MB Make)</small></div>
+            <div>PESO: <span id="telemetry-size">0.0 MB</span> <small>(Búfer Google Drive)</small></div>
         </div>
 
         <!-- BOTÓN MAESTRO DE ENVÍO -->
@@ -1046,17 +1046,12 @@
             const sizeEl = document.getElementById('telemetry-size');
             if (sizeEl) {
                 sizeEl.innerText = `${mb} MB`;
-                if (totalBytes > 8.5 * 1024 * 1024) {
-                    sizeEl.style.color = 'var(--danger)';
-                    sizeEl.title = '⚠️ Excede el límite de 8MB de Make';
-                } else {
-                    sizeEl.style.color = 'var(--neon-blue)';
-                    sizeEl.title = 'Dentro del límite aceptado';
-                }
+                sizeEl.style.color = 'var(--neon-blue)';
+                sizeEl.title = 'Subida directa a Google Drive sin límite de Make';
             }
         }
 
-        // Envío Completo a Make Webhook
+        // Envío Inteligente: MiniWeb ➔ Google Drive (MINUTA REUNIÓN) ➔ Webhook Make.com
         async function submitToMake() {
             if (currentRecordingSlotId !== null) {
                 alert("Tienes una grabación en curso. Por favor detenla antes de enviar.");
@@ -1090,7 +1085,7 @@
                     validAudios.push({
                         type: 'blob',
                         data: slot.blob,
-                        name: `audio_pista_${id}.webm`
+                        name: `audio_pista_${id}.mp3`
                     });
                 } else if (slot.file) {
                     totalSizeBytes += slot.file.size;
@@ -1113,87 +1108,117 @@
             const submitText = document.getElementById('submit-text');
             const statusBox = document.getElementById('status-box');
 
-            // GUARDIA DE TAMAÑO: Make Custom Webhook rechaza con 413 si supera 8.5MB
             const totalMb = (totalSizeBytes / (1024 * 1024)).toFixed(1);
-            if (totalSizeBytes > 8.5 * 1024 * 1024) {
-                statusBox.className = 'status-box error';
-                statusBox.innerHTML = `
-                    ⚠️ <strong>LÍMITE DE TAMAÑO DE MAKE EXCEDIDO:</strong><br><br>
-                    El paquete total pesa <strong>${totalMb} MB</strong>.<br>
-                    Los Webhooks de la plataforma Make tienen un límite estricto de máximo <strong>~8.5 MB</strong> por solicitud.<br><br>
-                    <strong>Solución:</strong><br>
-                    1. Graba audios cortos en el sitio (2 a 5 minutos) en lugar de un archivo único de 25 minutos.<br>
-                    2. Para archivos pesados pregrabados (> 10MB), el flujo estándar es depositarlos en Google Drive para que Make los descargue por carpeta.
-                `;
-                statusBox.style.display = 'block';
-                return;
-            }
 
             btn.disabled = true;
             submitText.style.display = 'none';
             spinner.style.display = 'block';
             statusBox.className = 'status-box';
-            statusBox.style.display = 'none';
+            statusBox.style.display = 'block';
 
             try {
-                const formData = new FormData();
+                // ============================================================
+                // PASO 1: Crear carpeta exclusiva en Google Drive
+                // ============================================================
+                statusBox.innerHTML = `⏳ <strong>Paso 1/3:</strong> Inicializando carpeta en Google Drive (MINUTA REUNIÓN)...`;
                 
-                // Metadatos de Reunión
-                formData.append("origen", "MiniWeb Grabadora Glucena");
-                formData.append("titulo", title);
-                formData.append("nombre_reunion", title);
-                formData.append("lugar", place);
-                formData.append("lugar_reunion", place);
-                formData.append("fecha", formattedDate);
-                formData.append("hora", time);
-                formData.append("asistentes", attendees);
-                formData.append("total_audios", validAudios.length);
+                const sessionApiUrl = `/api/meeting-pipeline?action=create-session&title=${encodeURIComponent(title || "Reunión")}`;
+                const sessionRes = await fetch(sessionApiUrl);
+                if (!sessionRes.ok) {
+                    const errText = await sessionRes.text();
+                    throw new Error(`Error inicializando sesión en Drive (${sessionRes.status}): ${errText}`);
+                }
+                const sessionData = await sessionRes.json();
+                const { folderId, folderName, accessToken, makeWebhookUrl } = sessionData;
 
-                // Foto (si existe)
-                if (photoFile) {
-                    formData.append("foto", photoFile, photoFile.name);
+                // ============================================================
+                // PASO 2: Subir audios directamente a esa carpeta en Google Drive
+                // ============================================================
+                if (validAudios.length > 0) {
+                    for (let i = 0; i < validAudios.length; i++) {
+                        const audio = validAudios[i];
+                        statusBox.innerHTML = `⏳ <strong>Paso 2/3:</strong> Subiendo audio ${i + 1}/${validAudios.length} a Google Drive (<code>${audio.name}</code>)...`;
+
+                        const boundary = "-------NexusDriveBoundary" + Date.now();
+                        const metadata = {
+                            name: audio.name,
+                            parents: [folderId]
+                        };
+
+                        const audioArrayBuffer = await audio.data.arrayBuffer();
+                        const mime = audio.data.type || (audio.name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/webm');
+
+                        const metaPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`;
+                        const metaBlob = new Blob([metaPart], { type: 'text/plain' });
+                        const endBlob = new Blob([`\r\n--${boundary}--`], { type: 'text/plain' });
+
+                        const multipartBlob = new Blob([metaBlob, audioArrayBuffer, endBlob]);
+
+                        const uploadRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+                            method: "POST",
+                            headers: {
+                                Authorization: `Bearer ${accessToken}`,
+                                "Content-Type": `multipart/related; boundary=${boundary}`
+                            },
+                            body: multipartBlob
+                        });
+
+                        if (!uploadRes.ok) {
+                            const upErr = await uploadRes.text();
+                            throw new Error(`Error al subir ${audio.name} a Drive (${uploadRes.status}): ${upErr}`);
+                        }
+                    }
                 }
 
-                // Inyección de todas las pistas de audio
-                validAudios.forEach((audio, idx) => {
-                    const audioKey = `audio${idx + 1}`;
-                    formData.append(audioKey, audio.data, audio.name);
-                    // También agregar como array múltiple para Make
-                    formData.append("audios[]", audio.data, audio.name);
-                });
+                // ============================================================
+                // PASO 3: Disparar el Webhook de Make con folder_id
+                // ============================================================
+                statusBox.innerHTML = `⏳ <strong>Paso 3/3:</strong> Despachando a Make.com con <code>folder_id</code>...`;
 
-                const response = await fetch(MAKE_WEBHOOK_URL, {
+                const makeFormData = new FormData();
+                makeFormData.append("folder_id", folderId);
+                makeFormData.append("titulo", title || "Reunión Sin Título");
+                makeFormData.append("nombre_reunion", title || "Reunión Sin Título");
+                makeFormData.append("lugar", place || "Oficina");
+                makeFormData.append("lugar_reunion", place || "Oficina");
+                makeFormData.append("fecha", formattedDate);
+                makeFormData.append("hora", time);
+                makeFormData.append("asistentes", attendees || "Gonzalo Lucena");
+
+                if (photoFile) {
+                    makeFormData.append("foto", photoFile, photoFile.name);
+                }
+
+                const targetWebhook = makeWebhookUrl || MAKE_WEBHOOK_URL;
+                const makeResponse = await fetch(targetWebhook, {
                     method: 'POST',
-                    body: formData
+                    body: makeFormData
                 });
 
-                if (response.ok) {
+                if (makeResponse.ok) {
                     statusBox.className = 'status-box success';
                     statusBox.innerHTML = `
-                        🚀 <strong>¡Paquete enviado a Make con éxito!</strong><br>
-                        Fecha: ${formattedDate} | Hora: ${time}<br>
-                        Audios adjuntos: ${validAudios.length} (${totalMb} MB) | Foto: ${photoFile ? 'Adjunta' : 'No'}
+                        🚀 <strong>¡Paquete despachado con éxito a Make!</strong><br><br>
+                        📁 <strong>Carpeta Drive:</strong> <code>${folderName}</code><br>
+                        🆔 <strong>Folder ID:</strong> <code>${folderId}</code><br>
+                        🎵 <strong>Pistas procesadas:</strong> ${validAudios.length} (${totalMb} MB)<br>
+                        📸 <strong>Foto pizarra:</strong> ${photoFile ? 'Adjunta' : 'No'}
                     `;
-                    statusBox.style.display = 'block';
 
-                    // Resetear formulario tras 4 segundos
+                    // Resetear formulario tras 5 segundos
                     setTimeout(() => {
                         window.location.reload();
-                    }, 4000);
+                    }, 5000);
 
                 } else {
-                    throw new Error(`Servidor Make respondió con estado ${response.status}`);
+                    const makeErrText = await makeResponse.text();
+                    throw new Error(`Servidor Make respondió con estado ${makeResponse.status}: ${makeErrText}`);
                 }
 
             } catch (err) {
-                console.error("Error al enviar a Make:", err);
+                console.error("Error en Pipeline de Reunión:", err);
                 statusBox.className = 'status-box error';
-                let errMsg = err.message;
-                if (errMsg.includes("Failed to fetch")) {
-                    errMsg = `Conexión rechazada por Make (Gateway 413 o límite de red). Verifica que el paquete total no exceda 8.5 MB.`;
-                }
-                statusBox.innerHTML = `❌ <strong>Error al enviar:</strong> ${errMsg}`;
-                statusBox.style.display = 'block';
+                statusBox.innerHTML = `❌ <strong>Error en el proceso:</strong> ${err.message}`;
                 btn.disabled = false;
             } finally {
                 submitText.style.display = 'inline';
