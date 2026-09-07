@@ -7,9 +7,9 @@ tags:
 - ⚡/nexus_core
 generated:
   by: antigravity/nexus-v5
-  at: '2026-09-06T12:42:17-04:00'
+  at: '2026-09-07T09:13:51-04:00'
 status: active
-updated: 06-09-2026 12:42:17
+updated: 07-09-2026 09:13:51
 ---
 
 # 🧭 ÍNDICE // TEMPLATES

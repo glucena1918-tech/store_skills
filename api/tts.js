@@ -62,12 +62,12 @@ export async function sendPaolaVoiceNote(chatId, spokenText, caption = "") {
       return false;
     }
 
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`;
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendAudio`;
     const formData = new FormData();
-    const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    const file = new File([audioBuffer], "paola_announcement.mp3", { type: "audio/mpeg" });
 
     formData.append("chat_id", chatId);
-    formData.append("voice", blob, "paola_announcement.mp3");
+    formData.append("audio", file);
     if (caption) {
       formData.append("caption", caption);
       formData.append("parse_mode", "Markdown");
