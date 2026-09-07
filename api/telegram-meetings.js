@@ -2,7 +2,7 @@
 // Endpoint: https://store-skills.vercel.app/api/telegram-meetings
 // Transcribe audio con Whisper, genera borradores y agenda en Calendar de forma 100% nativa.
 
-import { createGmailDraftCloud, createCalendarEventCloud } from "./gmail.js";
+import { createGmailDraftCloud, createCalendarEventCloud, searchGoogleContactsCloud, resolveContactEmail } from "./gmail.js";
 
 // Token exclusivo para Reuniones Rápidas
 const BOT_TOKEN = "8925532101:AAEmg6hVwN0tKcueHJ1Avdgh7cXQfj82no8";
@@ -127,8 +127,30 @@ export default async function handler(req, res) {
 
     // Comando de Bienvenida / Start
     if (text.toLowerCase() === "/start" || text.toLowerCase() === "start" || text.toLowerCase() === "help") {
-      await sendTelegramMessage(chatId, "🎙️ *Nexus Agenda Rápida Activo*\n\nEnvíame una nota de voz o escribe los acuerdos de tu reunión.\n\n⚡ *Automatizaciones automáticas:* \n• Transcripción precisa con Whisper.\n• Creación de Borrador en Gmail.\n• Programación en Google Calendar si mencionas fecha u hora.");
+      await sendTelegramMessage(chatId, "🎙️ *Nexus Agenda Rápida Activo*\n\nEnvíame una nota de voz o escribe los acuerdos de tu reunión.\n\n⚡ *Automatizaciones automáticas:* \n• Transcripción precisa con Whisper.\n• Resolución de destinatarios con tu **Libreta de Contactos**.\n• Creación de Borrador en Gmail.\n• Programación en Google Calendar si mencionas fecha u hora.\n\n🔍 *Comando útil:* `Contacto: [Nombre]` para buscar teléfonos o correos en tu libreta.");
       return res.status(200).json({ ok: true, handled: "start" });
+    }
+
+    // Comando: Buscar Contacto directo
+    const lowerText = text.toLowerCase();
+    if (lowerText.startsWith("contacto:") || lowerText.startsWith("/contacto") || lowerText.startsWith("buscar contacto")) {
+      const q = text.replace(/^(\/contacto|contacto:|buscar contacto)\s*/i, "").trim();
+      if (!q) {
+        await sendTelegramMessage(chatId, "👤 *Búsqueda de Contactos:*\nIndica el nombre a buscar. Ej: `Contacto: Carlos`");
+        return res.status(200).json({ ok: true, handled: "contact_empty" });
+      }
+      await sendTelegramMessage(chatId, `🔍 _Buscando a "${q}" en tus contactos de Google..._`);
+      const results = await searchGoogleContactsCloud(q);
+      if (results && results.length > 0) {
+        let card = `👤 *Contactos encontrados (${results.length}):*\n\n`;
+        results.slice(0, 5).forEach(c => {
+          card += `• *${c.name}*\n  📧 Email: \`${c.email || "No registrado"}\`\n  📱 Tel: \`${c.phone || "No registrado"}\`\n\n`;
+        });
+        await sendTelegramMessage(chatId, card);
+      } else {
+        await sendTelegramMessage(chatId, `⚠️ No encontré ningún contacto con el nombre "${q}" en tu libreta.`);
+      }
+      return res.status(200).json({ ok: true, handled: "contact_search" });
     }
 
     if (msg.voice) {
@@ -162,9 +184,13 @@ export default async function handler(req, res) {
 
       // 1. Crear Borrador en Gmail
       if (analysis.email_draft) {
-        const draftRes = await createGmailDraftCloud(analysis.email_draft.subject, analysis.email_draft.body, analysis.email_draft.to || "");
+        let recipient = analysis.email_draft.to || "";
+        if (recipient) {
+          recipient = await resolveContactEmail(recipient);
+        }
+        const draftRes = await createGmailDraftCloud(analysis.email_draft.subject, analysis.email_draft.body, recipient);
         if (draftRes.ok) {
-          replyMsg += `📧 *Borrador Creado en Gmail:*\n• **Asunto:** ${analysis.email_draft.subject}\n\n`;
+          replyMsg += `📧 *Borrador Creado en Gmail:*\n• **Para:** ${recipient ? `\`${recipient}\`` : "_(Sin destinatario específico)_"}\n• **Asunto:** ${analysis.email_draft.subject}\n\n`;
         } else {
           replyMsg += `⚠️ *Detalle en Gmail:* ${draftRes.error || "No se pudo crear"}\n\n`;
         }

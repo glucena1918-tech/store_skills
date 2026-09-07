@@ -5,7 +5,7 @@
 import { generateWeatherReport } from "./weather_cron.js";
 import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
 import { sendPaolaVoiceNote } from "./tts.js";
-import { createGmailDraftCloud, sendGmailEmailCloud } from "./gmail.js";
+import { createGmailDraftCloud, sendGmailEmailCloud, searchGoogleContactsCloud, resolveContactEmail } from "./gmail.js";
 // Auditor de reuniones extraído a bot independiente
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
@@ -453,7 +453,7 @@ function getHelpMenu(section = "main") {
        { text: "📋 Tareas & Obsidian", callback_data: "help_tasks" }],
       [{ text: "📅 Agenda & Calendario", callback_data: "help_calendar" },
        { text: "🤖 IA & Utilidades", callback_data: "help_utils" }],
-      [{ text: "📧 Correo (Gmail)", callback_data: "help_mail" },
+      [{ text: "📧 Correo & Contactos", callback_data: "help_mail" },
        { text: "⚙️ Configuración (Voz)", callback_data: "help_config" }]
     ];
   } else if (section === "help_pres") {
@@ -495,9 +495,10 @@ function getHelpMenu(section = "main") {
       [{ text: "🔙 Volver", callback_data: "help_main" }]
     ];
   } else if (section === "help_mail") {
-    text = "📧 *Gestión de Correos (Gmail)*\n\n" +
-           "• `Borrador: [Asunto], [Cuerpo]` — Preparar borrador\n" +
-           "• `Enviar email: [Para], [Asunto], [Cuerpo]` — Enviar correo directo";
+    text = "📧 *Gestión de Correos & Contactos*\n\n" +
+           "• `Borrador: [Asunto], [Cuerpo]` — Preparar borrador en Gmail\n" +
+           "• `Enviar email: [Para], [Asunto], [Cuerpo]` — Enviar correo directo\n" +
+           "• `Contacto: [Nombre]` — Buscar teléfono o correo en tu libreta de Google";
     reply_markup.inline_keyboard = [[{ text: "🔙 Volver", callback_data: "help_main" }]];
   } else if (section === "help_config") {
     text = "⚙️ *Configuración de Sistema & Voz*\n\n" +
@@ -974,6 +975,29 @@ export default async function handler(req, res) {
       await setVoiceConfig(null, false);
       await sendTelegramMessage(chatId, "🔇 *Modo Voz Desactivado*\n\nLas respuestas se emitirán únicamente en texto.");
       return res.status(200).json({ ok: true, handled: "voice_off" });
+    }
+
+    // ==========================================
+    // 2.8 COMANDO: CONSULTAR AGENDA PERSONAL DE CONTACTOS
+    // ==========================================
+    if (lower.startsWith("contacto:") || lower.startsWith("/contacto") || lower.startsWith("buscar contacto") || lower.startsWith("contactos")) {
+      const q = text.replace(/^(\/contacto|contacto:|buscar contacto|contactos)\s*/i, "").trim();
+      if (!q) {
+        await sendTelegramMessage(chatId, "👤 *Agenda Personal de Contactos:*\nIndica el nombre o apellido a buscar. Ejemplo:\n`Contacto: Erlan` o `Contacto: Carlos`");
+        return res.status(200).json({ ok: true, handled: "contact_empty" });
+      }
+      await sendTelegramMessage(chatId, `🔍 _Buscando a "${q}" en tus contactos de Google..._`);
+      const results = await searchGoogleContactsCloud(q);
+      if (results && results.length > 0) {
+        let card = `👤 *Contactos encontrados (${results.length}):*\n\n`;
+        results.slice(0, 5).forEach(c => {
+          card += `• *${c.name}*\n  📧 Email: \`${c.email || "No registrado"}\`\n  📱 Tel: \`${c.phone || "No registrado"}\`\n\n`;
+        });
+        await sendTelegramMessage(chatId, card);
+      } else {
+        await sendTelegramMessage(chatId, `⚠️ No encontré ningún contacto con el nombre "${q}" en tu libreta.`);
+      }
+      return res.status(200).json({ ok: true, handled: "contact_search" });
     }
 
     // ==========================================

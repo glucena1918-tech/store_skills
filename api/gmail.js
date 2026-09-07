@@ -185,3 +185,73 @@ export async function createCalendarEventCloud(eventData) {
   }
 }
 
+/**
+ * Busca contactos en Google Contacts (People API) por nombre, apellido o correo
+ */
+export async function searchGoogleContactsCloud(query) {
+  if (!query || !query.trim()) return [];
+  try {
+    const token = await getGoogleAccessToken();
+    const encoded = encodeURIComponent(query.trim());
+    const url = `https://people.googleapis.com/v1/people:searchContacts?query=${encoded}&readMask=names,emailAddresses,phoneNumbers`;
+    const res = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const results = data.results || [];
+      const contacts = results.map(r => {
+        const p = r.person || {};
+        return {
+          name: p.names?.[0]?.displayName || "Sin nombre",
+          email: p.emailAddresses?.[0]?.value || "",
+          phone: p.phoneNumbers?.[0]?.value || ""
+        };
+      });
+      if (contacts.length > 0) return contacts;
+    }
+
+    // Fallback: listar conexiones y filtrar en memoria
+    const listUrl = `https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers&pageSize=250`;
+    const listRes = await fetch(listUrl, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (!listRes.ok) return [];
+    const listData = await listRes.json();
+    const conns = listData.connections || [];
+    const qLower = query.toLowerCase().trim();
+    return conns.filter(c => {
+      const name = c.names?.[0]?.displayName?.toLowerCase() || "";
+      const email = c.emailAddresses?.[0]?.value?.toLowerCase() || "";
+      return name.includes(qLower) || email.includes(qLower);
+    }).map(c => ({
+      name: c.names?.[0]?.displayName || "Sin nombre",
+      email: c.emailAddresses?.[0]?.value || "",
+      phone: c.phoneNumbers?.[0]?.value || ""
+    }));
+  } catch (e) {
+    console.error("Error buscando contactos en Google People API:", e);
+    return [];
+  }
+}
+
+/**
+ * Resuelve automáticamente el correo de un contacto por su nombre
+ */
+export async function resolveContactEmail(nameOrEmail) {
+  if (!nameOrEmail || !nameOrEmail.trim()) return "";
+  const clean = nameOrEmail.trim();
+  // Si ya es un correo electrónico válido, devolverlo
+  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(clean)) {
+    return clean;
+  }
+  // Buscar en la libreta de contactos
+  const contacts = await searchGoogleContactsCloud(clean);
+  if (contacts && contacts.length > 0) {
+    const withEmail = contacts.find(c => c.email && c.email.includes("@"));
+    if (withEmail) return withEmail.email;
+  }
+  return clean;
+}
+
