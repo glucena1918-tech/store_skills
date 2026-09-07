@@ -6,7 +6,7 @@ import { generateWeatherReport } from "./weather_cron.js";
 import { analyzeAndStructurePresentation, buildOfficialCuspalPresentation } from "./presentation.js";
 import { sendPaolaVoiceNote } from "./tts.js";
 import { createGmailDraftCloud, sendGmailEmailCloud } from "./gmail.js";
-import { parseMeetingIntent, processMeetingDebriefFull } from "./meeting_auditor.js";
+// Auditor de reuniones extraído a bot independiente
 
 const BOT_TOKEN = "8714829831:AAEMd6h0cNM7_AZYvzjJsm8CRGZCpWK0xsI";
 const ALLOWED_CHAT_ID = "1274149213";
@@ -806,53 +806,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, ignored: "empty_text" });
     }
 
-    // Si envió solo una foto sin texto, asignarle un texto base de auditoría visual de reunión
-    if (!text && attachedPhotoBuffer) {
-      text = "Agenda de reunión: Registro fotográfico de mesa de trabajo y temas tratados";
-    }
-
     const lower = text.toLowerCase();
 
     // ==========================================
-    // 0. AUDITOR DE REUNIONES Y MINUTA EJECUTIVA (MÁXIMA PRIORIDAD)
-    // Speech-to-Action: Detecta audios, agendas o reportes de reuniones y genera Minuta Oficial .docx
+    // NOTA: El auditor de reuniones ha sido extraído a un Bot independiente.
+    // Este bot ahora procesa EXCLUSIVAMENTE Redacción Administrativa (Memos/Oficios)
     // ==========================================
-    const isMeetingIntent = parseMeetingIntent(text) || (
-      attachedPhotoBuffer && !lower.startsWith("memo:") && !lower.startsWith("oficio:") && !lower.startsWith("/memo") && !lower.startsWith("/oficio")
-    );
-
-    if (isMeetingIntent) {
-      await processMeetingDebriefFull({
-        text,
-        chatId,
-        msgId,
-        isVoice,
-        photoBuffer: attachedPhotoBuffer,
-        photoUrl: attachedPhotoUrl,
-        sendTelegramMessage,
-        sendTelegramDocument
-      });
-
-      // Si Make tiene webhook configurado y hay foto, notificarle en paralelo el tipo exacto
-      const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL || "https://hook.eu2.make.com/bahndwb3u79hqcnjdvwbuy2pkwuddxo4";
-      if (MAKE_WEBHOOK_URL && attachedPhotoUrl) {
-        try {
-          fetch(MAKE_WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tipo: "agenda_reunion",
-              titulo: "Agenda de Reunión CUSPAL",
-              texto: text,
-              foto_url: attachedPhotoUrl,
-              origen: "Telegram"
-            })
-          }).catch(e => console.error("Error disparando Make en paralelo:", e));
-        } catch (_) {}
-      }
-
-      return res.status(200).json({ ok: true, handled: "meeting_minuta" });
-    }
 
     // ==========================================
     // 0.2 INTENCIÓN DE BORRADOR DE GMAIL (NUBE 24/7)
