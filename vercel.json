@@ -3,6 +3,10 @@
     {
       "path": "/api/weather_cron",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/briefing_cron",
+      "schedule": "0 10 * * *"
     }
   ]
 }
