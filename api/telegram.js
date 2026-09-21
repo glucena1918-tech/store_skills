@@ -941,9 +941,17 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
-    // 2. COMANDO: AYUDA / START / HELP
+    // 2. COMANDO: AYUDA / START / HELP / MENU / CENTRO DE MANDO
     // ==========================================
-    if (lower === "start" || lower === "/start" || lower === "ayuda" || lower === "/ayuda" || lower === "help" || lower === "/help") {
+    if (
+      lower === "start" || lower === "/start" ||
+      lower === "ayuda" || lower === "/ayuda" ||
+      lower === "help" || lower === "/help" ||
+      lower === "menu" || lower === "/menu" ||
+      lower === "menú" || lower === "/menú" ||
+      lower === "centro de mando" || lower === "/centro_de_mando" ||
+      lower === "mando" || lower === "/mando"
+    ) {
       const { text: helpMsg, reply_markup: rm } = getHelpMenu("main");
       await sendTelegramMessage(chatId, helpMsg, rm);
       return res.status(200).json({ ok: true, handled: "help" });
