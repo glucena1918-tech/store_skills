@@ -7,9 +7,9 @@ tags:
 - ⚡/nexus_core
 generated:
   by: antigravity/nexus-v5
-  at: '2026-09-07T13:40:11-04:00'
+  at: '2026-10-21T15:46:40-04:00'
 status: active
-updated: 07-09-2026 13:40:11
+updated: 21-10-2026 15:46:40
 ---
 
 # 🧭 ÍNDICE // TEMPLATES
@@ -27,6 +27,6 @@ updated: 07-09-2026 13:40:11
 *Esta carpeta actúa como contenedor organizativo y nodo de enrutamiento.*
 
 ### 📁 Subcarpetas & Módulos Derivados
-- 📂 **[[assets|assets]]** — (0 elementos)
+- 📂 **[[assets/_Index.md|assets]]** — (9 elementos)
 
 <!-- OKF_INVENTORY_END -->

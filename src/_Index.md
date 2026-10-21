@@ -7,9 +7,9 @@ tags:
 - ⚡/nexus_core
 generated:
   by: antigravity/nexus-v5
-  at: '2026-09-07T13:40:11-04:00'
+  at: '2026-10-21T15:46:40-04:00'
 status: active
-updated: 07-09-2026 13:40:11
+updated: 21-10-2026 15:46:40
 ---
 
 # 🧭 ÍNDICE // SRC
@@ -24,12 +24,17 @@ updated: 07-09-2026 13:40:11
 
 ## 📑 Catálogo de Contenidos & Navegación OKF
 
-*Esta carpeta actúa como contenedor organizativo y nodo de enrutamiento.*
+### 📦 Archivos y Documentos Adjuntos
+| Archivo | Formato | Tamaño |
+|:---|:---|:---|
+| [[App.jsx]] | `.jsx` | 9 KB |
+| [[index.css]] | `.css` | 5 KB |
+| [[main.jsx]] | `.jsx` | 0 KB |
 
 ### 📁 Subcarpetas & Módulos Derivados
-- 📂 **[[components|components]]** — (0 elementos)
-- 📂 **[[hooks|hooks]]** — (0 elementos)
-- 📂 **[[lib|lib]]** — (0 elementos)
-- 📂 **[[utils|utils]]** — (0 elementos)
+- 📂 **[[components/_Index.md|components]]** — (13 elementos)
+- 📂 **[[hooks/_Index.md|hooks]]** — (3 elementos)
+- 📂 **[[lib/_Index.md|lib]]** — (2 elementos)
+- 📂 **[[utils/_Index.md|utils]]** — (3 elementos)
 
 <!-- OKF_INVENTORY_END -->

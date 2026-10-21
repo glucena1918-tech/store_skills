@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.node_modules/
 .pnp
 .pnp.js
 
@@ -30,3 +31,5 @@ yarn-error.log*
 .vercel
 .env*
 *.pptx
+
+.vercel

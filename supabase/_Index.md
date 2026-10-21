@@ -7,9 +7,9 @@ tags:
 - ⚡/nexus_core
 generated:
   by: antigravity/nexus-v5
-  at: '2026-09-07T13:40:11-04:00'
+  at: '2026-10-21T15:46:40-04:00'
 status: active
-updated: 07-09-2026 13:40:11
+updated: 21-10-2026 15:46:40
 ---
 
 # 🧭 ÍNDICE // SUPABASE
@@ -24,11 +24,15 @@ updated: 07-09-2026 13:40:11
 
 ## 📑 Catálogo de Contenidos & Navegación OKF
 
-*Esta carpeta actúa como contenedor organizativo y nodo de enrutamiento.*
+### 📦 Archivos y Documentos Adjuntos
+| Archivo | Formato | Tamaño |
+|:---|:---|:---|
+| [[config.toml]] | `.toml` | 15 KB |
+| [[setup.sql]] | `.sql` | 2 KB |
 
 ### 📁 Subcarpetas & Módulos Derivados
-- 📂 **[[functions|functions]]** — (0 elementos)
-- 📂 **[[migrations|migrations]]** — (0 elementos)
-- 📂 **[[snippets|snippets]]** — (0 elementos)
+- 📂 **[[functions/_Index.md|functions]]** — (2 elementos)
+- 📂 **[[migrations/_Index.md|migrations]]** — (3 elementos)
+- 📂 *snippets* — (carpeta vacía)
 
 <!-- OKF_INVENTORY_END -->

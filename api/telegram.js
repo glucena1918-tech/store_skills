@@ -615,6 +615,33 @@ export function parseDraftIntent(text) {
   return { subject, body, to };
 }
 
+// ==========================================
+// NUEVO: SISTEMA GESTOR DE INCIDENCIAS NEXUS
+// ==========================================
+class NexusTicket {
+  constructor(type, description, raw_text, stack_trace = null) {
+    this.type = type; // "bug", "feature", "improvement", "support"
+    this.description = description;
+    this.raw_text = raw_text;
+    this.stack_trace = stack_trace;
+    this.timestamp = new Date().toISOString();
+    this.status = "open";
+  }
+
+  toJSON() {
+    return {
+      type: "incident", // Etiqueta explícita para que nexus_cloud_sync.py lo atrape
+      incident_type: this.type,
+      description: this.description,
+      raw_text: this.raw_text,
+      stack_trace: this.stack_trace,
+      status: this.status,
+      created_at: this.timestamp,
+      source: "telegram_cloud_gateway"
+    };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({
@@ -941,6 +968,13 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
+    // 1.5 COMANDO DE PRUEBA: FORCE ERROR (NEXUS INCIDENT TRACKER)
+    // ==========================================
+    if (lower === "/force_error" || lower === "force error") {
+      throw new Error("Simulated backend crash triggered by Comandante for Nexus Incident Tracker verification.");
+    }
+
+    // ==========================================
     // 2. COMANDO: AYUDA / START / HELP / MENU / CENTRO DE MANDO
     // ==========================================
     if (
@@ -1196,7 +1230,28 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, saved: saved, filename: filename });
   } catch (error) {
-    console.error("Error fatal en Cloud Gateway:", error);
+    console.error("🔥 Error fatal detectado en Cloud Gateway:", error);
+    try {
+      const msg = req.body?.message || req.body?.edited_message;
+      const text = msg?.text || msg?.caption || "No text context";
+      const chatId = msg?.chat?.id;
+
+      const ticket = new NexusTicket(
+        "bug",
+        `Unhandled Exception in Telegram Cloud Gateway: ${error.message}`,
+        text,
+        error.stack
+      );
+      const filename = `incident_${Date.now()}.json`;
+      await uploadToSupabaseBuffer(filename, ticket.toJSON());
+      
+      if (chatId) {
+        const alertMsg = `⚠️ *[NEXUS ALERT]*\nSe ha detectado un error y se ha generado un ticket automático en la Bóveda (Inbox).\n\n📄 *Ticket ID:* \`${filename}\`\n🚨 *Detalle:* \`${error.message}\``;
+        await sendTelegramMessage(chatId, alertMsg);
+      }
+    } catch (incidentError) {
+      console.error("Error intentando generar ticket de incidencia:", incidentError);
+    }
     return res.status(200).json({ ok: false, error: error.message });
   }
 }
