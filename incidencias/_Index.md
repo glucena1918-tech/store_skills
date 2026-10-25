@@ -34,5 +34,6 @@ updated: 21-10-2026 15:46:40
 | [[INC-20261010-GMAIL|INC-20261010-GMAIL]] | `documento_conocimiento` | 🟡 `resolved` | 2026-10-10 |
 | [[INC-20261010-JARVIS|INC-20261010-JARVIS]] | `documento_conocimiento` | 🟡 `resolved` | 2026-10-10 |
 | [[INC-20261021-GACETAS|INC-20261021-GACETAS]] | `documento_conocimiento` | 🟡 `resolved` | 2026-10-21 |
+| [[INC-20261024-HOTMIC|INC-20261024-HOTMIC]] | `documento_conocimiento` | ⚪ `completed` | 2026-10-24 |
 
 <!-- OKF_INVENTORY_END -->
